@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'debug_toolbar',
     'rest_framework',
+    'rest_framework.authtoken',
     'djoser',
     'users.apps.UsersConfig',
     'api.apps.ApiConfig',
@@ -139,9 +140,17 @@ REST_FRAMEWORK = {
 
 }
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DJOSER = {
+    'LOGIN_FIELD': 'email',  # Вход по электронной почте
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
+    'SEND_ACTIVATION_EMAIL': False,
+    'SERIALIZERS': {},
+}
 
 AUTH_USER_MODEL = 'users.User'
-AUTHENTICATION_BACKENDS = [
+AUTHENTICATION_BACKENDS = (
     'users.email_auth_backend.EmailAuthBackend',
-]
+)
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

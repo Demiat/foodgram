@@ -17,3 +17,11 @@ class UserSerializer(ModelSerializer):
         valid.username_regex_validator(username)
         # valid.uniq_username_validator(username)
         return username
+
+    def create(self, validated_data):
+        passw = validated_data.pop('password')
+        user = mod.User(**validated_data)
+        # Шифруем пароль перед сохранением
+        user.set_password(passw)
+        user.save()
+        return user
