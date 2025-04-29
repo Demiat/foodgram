@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'djoser',
     'users.apps.UsersConfig',
-
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -141,6 +141,7 @@ REST_FRAMEWORK = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+AUTH_USER_MODEL = 'users.User'
 AUTHENTICATION_BACKENDS = [
     'users.email_auth_backend.EmailAuthBackend',
 ]

@@ -1,11 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-import constants as const
-import validators as valid
+import users.constants as const
+import users.validators as valid
 
 
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     """Абстрактная модель пользователя с логином по email."""
 
     email = models.EmailField(
@@ -20,7 +20,6 @@ class CustomUser(AbstractUser):
         validators=(valid.username_regex_validator,),
         help_text=const.USERNAME_REGEX_TEXT
     )
-
     first_name = models.CharField(
         max_length=const.LENGTH_USERNAME,
         verbose_name='Имя',

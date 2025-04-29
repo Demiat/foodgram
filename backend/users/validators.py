@@ -1,6 +1,6 @@
 from django.core.validators import RegexValidator
 
-import constants as const
+import users.constants as const
 
 
 def username_regex_validator(username):
