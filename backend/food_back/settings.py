@@ -117,7 +117,8 @@ MEDIA_ROOT = BASE_DIR / 'var/www/foodgram/media'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny'
     ],
 
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -141,11 +142,11 @@ REST_FRAMEWORK = {
 }
 
 DJOSER = {
-    'LOGIN_FIELD': 'email',  # Вход по электронной почте
-    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
-    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
+    'LOGIN_FIELD': 'email',
     'SEND_ACTIVATION_EMAIL': False,
-    'SERIALIZERS': {},
+    'SERIALIZERS': {
+        'user_create': 'users.serializers.UserCreateSerializerForDjoser'
+    },
 }
 
 AUTH_USER_MODEL = 'users.User'
