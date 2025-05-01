@@ -1,25 +1,48 @@
 import base64
 
-from djoser.serializers import UserCreateSerializer
+from djoser.serializers import UserCreateSerializer, UserSerializer
 from django.core.files.base import ContentFile
 from rest_framework import serializers
-from rest_framework.serializers import ModelSerializer
 
-import users.models as mod
-import users.validators as valid
+from .models import User
+from .validators import username_regex_validator
 
 
-class UserCreateSerializerForDjoser(UserCreateSerializer):
-    """Обрабатывает модель пользователей User через Djoser."""
+class UserSerializerDjoser(UserSerializer):
+
+    avatar = serializers.ImageField(read_only=True)
+
+    class Meta(UserSerializer.Meta):
+        model = User
+        fields = (
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'avatar',
+            'is_subscribed',
+        )
+        read_only_fields = ('avatar', 'is_subscribed')
+
+
+class UserCreateSerializerDjoser(UserCreateSerializer):
+    """Обрабатывает создание модели User."""
 
     class Meta(UserCreateSerializer.Meta):
-        model = mod.User
+        model = User
         fields = (
-            'username', 'email', 'first_name', 'last_name', 'password'
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'password',
         )
+        read_only_fields = ('id',)
 
     def validate_username(self, username):
-        valid.username_regex_validator(username)
+        username_regex_validator(username)
         return username
 
 
@@ -32,30 +55,10 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
-class CatSerializer(ModelSerializer):
+class AvatarSetSerializer(serializers.ModelSerializer):
 
-    image = Base64ImageField(required=True)
-    image_url = serializers.SerializerMethodField(
-        'get_image_url',
-        read_only=True,
-    )
+    avatar = Base64ImageField(required=True)
 
     class Meta:
-        model = mod.User
+        model = User
         fields = ('avatar',)
- 
-    def get_image_url(self, obj):
-        if obj.image:
-            return obj.image.url
-        return None
-
-
-
-
-    # def create(self, validated_data):
-    #     passw = validated_data.pop('password')
-    #     user = mod.User(**validated_data)
-    #     # Шифруем пароль перед сохранением
-    #     user.set_password(passw)
-    #     user.save()
-    #     return user
