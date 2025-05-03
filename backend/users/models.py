@@ -47,3 +47,26 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username[:LENGTH_USERNAME]
+
+
+class Follow(models.Model):
+    """Подписчики."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower'
+    )
+    following = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='followed_by'
+    )
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'following'),
+                name='unique_follow'
+            ),
+        )

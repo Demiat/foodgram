@@ -1,12 +1,14 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from djoser.serializers import SetPasswordSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
+from djoser.serializers import SetPasswordSerializer
+from django.conf import settings
+
 from .models import User
-from .serializers import (
+from api.serializers import (
     UserCreateSerializerDjoser,
     UserSerializerDjoser,
     AvatarSetSerializer,
@@ -29,7 +31,7 @@ class UserViewSet(ModelViewSet):
     @action(
         detail=False,
         methods=['GET'],
-        url_path='me',
+        url_path=settings.SELF_PROFILE_POINT,
         permission_classes=(IsAuthenticated,)
     )
     def get_me_data(self, request):
@@ -57,11 +59,11 @@ class UserViewSet(ModelViewSet):
     @action(
         detail=False,
         methods=['PUT', 'DELETE'],
-        url_path='me/avatar',
+        url_path=f'{settings.SELF_PROFILE_POINT}/{settings.AVATAR_POINT}',
         permission_classes=(IsAuthenticated,)
     )
     def set_or_delete_avatar(self, request):
-        """Обновление аватарки пользователя."""
+        """Установка или удаление аватарки пользователя."""
         if request.method == 'PUT':
             serializer = AvatarSetSerializer(
                 instance=request.user,
@@ -71,8 +73,5 @@ class UserViewSet(ModelViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         elif request.method == 'DELETE':
-            user = request.user
-            # if user.avatar:
-            #     os.remove(user.avatar.path)
-            user.avatar.delete(save=True)  # удаляем ссылку на файл в БД
+            request.user.avatar.delete(save=True)
             return Response(status=status.HTTP_204_NO_CONTENT)
