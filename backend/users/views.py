@@ -20,7 +20,6 @@ class UserViewSet(ModelViewSet):
 
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
-    pagination_class = LimitOffsetPagination
     http_method_names = ('get', 'post', 'put', 'delete')
 
     def get_serializer_class(self):

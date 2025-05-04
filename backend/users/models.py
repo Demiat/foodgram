@@ -28,7 +28,6 @@ class User(AbstractUser):
         max_length=LENGTH_USERNAME,
         verbose_name='Фамилия',
     )
-    is_subscribed = models.BooleanField(default=False)
     avatar = models.ImageField(
         'Изображение',
         upload_to='users/',
@@ -47,6 +46,19 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username[:LENGTH_USERNAME]
+
+    @property
+    def is_subscribed(self):
+        """
+        Проверяет, подписан ли пользователь на другого пользователя.
+        Предполагается наличие атрибута request.user
+        в контексте запросов Django: obj._request_user = self.request.user
+        """
+        if hasattr(self, '_request_user'):
+            user = getattr(self, '_request_user')
+            return self.follows.filter(following=self, user=user).exists()
+        else:
+            return False
 
 
 class Follow(models.Model):
@@ -70,3 +82,4 @@ class Follow(models.Model):
                 name='unique_follow'
             ),
         )
+        default_related_name = '%(model_name)ss'

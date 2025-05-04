@@ -122,3 +122,11 @@ class RecipesSerializer(serializers.ModelSerializer):
             'cooking_time',
             'image',
         )
+
+
+class TagSetializer(serializers.ModelSerializer):
+    """Тэги."""
+
+    class Meta:
+        model = Tag
+        fields = ('id', 'name', 'slug')

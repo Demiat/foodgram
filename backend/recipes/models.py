@@ -20,7 +20,7 @@ class Tag(models.Model):
         unique=True
     )
     slug = models.SlugField(
-        verbose_name='Идентификатор',
+        verbose_name='Slug-идентификатор',
         max_length=MAX_LENGTH_SLUG,
         unique=True
     )
@@ -38,7 +38,6 @@ class Ingredient(models.Model):
         verbose_name='Ед. измерения',
         max_length=MAX_LENGTH_INGRED,
     )
-    # amount = models.PositiveSmallIntegerField()
 
 
 class Recipe(models.Model):
@@ -52,8 +51,6 @@ class Recipe(models.Model):
         User,
         on_delete=models.CASCADE
     )
-    is_favorited = models.BooleanField(default=False)
-    is_in_shopping_cart = models.BooleanField(default=False)
     name = models.CharField(
         verbose_name='Рецепт',
         max_length=MAX_LENGTH_NAME,
@@ -73,6 +70,35 @@ class Recipe(models.Model):
         'Изображение рецепта',
         upload_to='recipes/images/',
     )
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def is_favorited(self):
+        """
+        Проверяет, содержится ли рецепт в избранном у текущего пользователя.
+        Предполагается наличие атрибута request.user
+        в контексте запросов Django: obj._request_user = self.request.user
+        """
+        if hasattr(self, '_request_user'):
+            user = getattr(self, '_request_user')
+            return self.favorites.filter(recipe=self, user=user).exists()
+        else:
+            return False
+
+    @property
+    def is_in_shopping_cart(self):
+        """
+        Проверяет, содержится ли рецепт в списке покупок текущего пользователя.
+        Предполагается наличие атрибута request.user
+        в контексте запросов Django: obj._request_user = self.request.user
+        """
+        if hasattr(self, '_request_user'):
+            user = getattr(self, '_request_user')
+            return self.shoppingcarts.filter(recipe=self, user=user).exists()
+        else:
+            return False
 
 
 class RecipeIngredient(models.Model):
