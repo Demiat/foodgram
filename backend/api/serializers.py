@@ -104,20 +104,50 @@ class IngredientSerializer(serializers.ModelSerializer):
 class RecipeIngredientSerializer(serializers.ModelSerializer):
     """Рецепты с ингредиентами и кол-вом."""
 
-    ingredient = IngredientSerializer(read_only=True)
-
     class Meta:
         model = RecipeIngredient
-        fields = ('ingredient', 'amount')
+
+    def to_representation(self, instance):
+        ingredient_serialized = IngredientSerializer(instance.ingredient).data
+        # Добавляем количество на один уровень с полями ингредиента
+        representation = {**ingredient_serialized, 'amount': instance.amount}
+        return representation
 
 
-class RecipesSerializer(serializers.ModelSerializer):
+class RecipesReadSerializer(serializers.ModelSerializer):
 
     image = Base64ImageField(required=True)
     tags = TagSerializer(many=True, read_only=True)
     ingredients = RecipeIngredientSerializer(
-        many=True, source='recipes_ingredients', read_only=True
+        many=True, read_only=True, source='recipeingredient_set'
     )
+    author = UserSerializerDjoser(read_only=True)
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'id',
+            'tags',
+            'ingredients',
+            'is_favorited',
+            'is_in_shopping_cart',
+            'author',
+            'name',
+            'text',
+            'cooking_time',
+            'image',
+        )
+        read_only_fields = fields
+
+
+class RecipesWriteSerializer(serializers.ModelSerializer):
+
+    image = Base64ImageField(required=True)
+    tags = TagSerializer(many=True, read_only=True)
+    ingredients = RecipeIngredientSerializer(
+        many=True, read_only=True, source='recipeingredient_set'
+    )
+    author = UserSerializerDjoser(read_only=True)
 
     class Meta:
         model = Recipe
@@ -134,7 +164,6 @@ class RecipesSerializer(serializers.ModelSerializer):
             'image',
         )
         extra_kwargs = {
-            'author': {'read_only': True},
             'is_favorited': {'read_only': True},
             'is_in_shopping_cart': {'read_only': True},
             'cooking_time': {'min_value': 1, 'max_value': 240},
@@ -142,9 +171,7 @@ class RecipesSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # ingredients = validated_data.pop('ingredients')
         ingredients = self.initial_data.get('ingredients', [])
-        # tags = validated_data.pop('tags')
         tags = self.initial_data.get('tags', [])
         recipe = Recipe.objects.create(**validated_data)
         for ingredient in ingredients:
@@ -156,6 +183,9 @@ class RecipesSerializer(serializers.ModelSerializer):
                 recipe=recipe,
                 amount=ingredient['amount']
             )
-        # recipe.ingredients.set(ingredients)
         recipe.tags.set(tags)
         return recipe
+
+    # def to_representation(self, recipe):
+    #     super().to_representation(self)
+    #     return RecipesReadSerializer(recipe, context=self.context).data
