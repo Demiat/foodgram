@@ -60,7 +60,7 @@ class Base64ImageField(serializers.ImageField):
         if isinstance(data, str) and data.startswith('data:image'):
             format_img, imgstr = data.split(';base64,')
             ext = format_img.split('/')[-1]
-            data = ContentFile(base64.b64decode(imgstr), name='avatar.' + ext)
+            data = ContentFile(base64.b64decode(imgstr), name='image.' + ext)
         return super().to_internal_value(data)
 
 
@@ -85,6 +85,14 @@ class AvatarSetSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TagSerializer(serializers.ModelSerializer):
+    """Тэги."""
+
+    class Meta:
+        model = Tag
+        fields = ('id', 'name', 'slug')
+
+
 class IngredientSerializer(serializers.ModelSerializer):
     """Ингредиенты."""
 
@@ -96,37 +104,58 @@ class IngredientSerializer(serializers.ModelSerializer):
 class RecipeIngredientSerializer(serializers.ModelSerializer):
     """Рецепты с ингредиентами и кол-вом."""
 
-    ingredient = IngredientSerializer()
+    ingredient = IngredientSerializer(read_only=True)
 
     class Meta:
         model = RecipeIngredient
-        fields = ('id', 'ingredient', 'amount', 'measurement_unit')
+        fields = ('ingredient', 'amount')
 
 
 class RecipesSerializer(serializers.ModelSerializer):
 
     image = Base64ImageField(required=True)
+    tags = TagSerializer(many=True, read_only=True)
     ingredients = RecipeIngredientSerializer(
-        many=True, source='recipe_ingredients'
+        many=True, source='recipes_ingredients', read_only=True
     )
 
     class Meta:
         model = Recipe
         fields = (
+            'id',
             'tags',
             'ingredients',
             'is_favorited',
             'is_in_shopping_cart',
+            'author',
             'name',
             'text',
             'cooking_time',
             'image',
         )
+        extra_kwargs = {
+            'author': {'read_only': True},
+            'is_favorited': {'read_only': True},
+            'is_in_shopping_cart': {'read_only': True},
+            'cooking_time': {'min_value': 1, 'max_value': 240},
+            'text': {'trim_whitespace': True},
+        }
 
-
-class TagSetializer(serializers.ModelSerializer):
-    """Тэги."""
-
-    class Meta:
-        model = Tag
-        fields = ('id', 'name', 'slug')
+    def create(self, validated_data):
+        # ingredients = validated_data.pop('ingredients')
+        ingredients = self.initial_data.get('ingredients', [])
+        # tags = validated_data.pop('tags')
+        tags = self.initial_data.get('tags', [])
+        recipe = Recipe.objects.create(**validated_data)
+        for ingredient in ingredients:
+            current_ingredient = Ingredient.objects.get(
+                pk=ingredient['id']
+            )
+            RecipeIngredient.objects.create(
+                ingredient=current_ingredient,
+                recipe=recipe,
+                amount=ingredient['amount']
+            )
+        # recipe.ingredients.set(ingredients)
+        recipe.tags.set(tags)
+        return recipe

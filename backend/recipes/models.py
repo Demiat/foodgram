@@ -45,7 +45,9 @@ class Recipe(models.Model):
 
     tags = models.ManyToManyField(Tag)
     ingredients = models.ManyToManyField(
-        Ingredient, through='RecipeIngredient'
+        Ingredient,
+        through='RecipeIngredient',
+        related_name='recipes_ingredients'
     )
     author = models.ForeignKey(
         User,
@@ -78,8 +80,7 @@ class Recipe(models.Model):
     def is_favorited(self):
         """
         Проверяет, содержится ли рецепт в избранном у текущего пользователя.
-        Предполагается наличие атрибута request.user
-        в контексте запросов Django: obj._request_user = self.request.user
+        Передать в контекстах обработки: obj._request_user = self.request.user
         """
         if hasattr(self, '_request_user'):
             user = getattr(self, '_request_user')
@@ -91,8 +92,7 @@ class Recipe(models.Model):
     def is_in_shopping_cart(self):
         """
         Проверяет, содержится ли рецепт в списке покупок текущего пользователя.
-        Предполагается наличие атрибута request.user
-        в контексте запросов Django: obj._request_user = self.request.user
+        Передать в контекстах обработки: obj._request_user = self.request.user
         """
         if hasattr(self, '_request_user'):
             user = getattr(self, '_request_user')

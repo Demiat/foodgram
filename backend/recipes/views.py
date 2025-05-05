@@ -7,7 +7,8 @@ from .models import Recipe, Ingredient, Tag
 from api.filters import IngredientFilter
 from api.serializers import (
     IngredientSerializer,
-    TagSetializer,
+    TagSerializer,
+    RecipesSerializer,
 )
 
 
@@ -16,7 +17,7 @@ class TagsViewSet(ModelViewSet):
 
     queryset = Tag.objects.all()
     permission_classes = (AllowAny,)
-    serializer_class = TagSetializer
+    serializer_class = TagSerializer
     pagination_class = None
     http_method_names = ('get',)
 
@@ -37,6 +38,10 @@ class RecipesViewSet(ModelViewSet):
     """Контроллер рецептов."""
 
     queryset = Recipe.objects.all()
+    serializer_class = RecipesSerializer
     permission_classes = (IsAuthenticated,)
     pagination_class = LimitOffsetPagination
     http_method_names = ('get', 'post', 'patch', 'delete')
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
