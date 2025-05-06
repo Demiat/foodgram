@@ -15,4 +15,4 @@ services:
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
       - ../backend/media:/usr/share/nginx/html/media/
-      - ../backend/collected_static:/usr/share/nginx/html/static/
+      # - ../backend/collected_static:/usr/share/nginx/html/static/

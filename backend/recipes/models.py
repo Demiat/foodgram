@@ -16,8 +16,7 @@ class Tag(models.Model):
 
     name = models.CharField(
         verbose_name='Название',
-        max_length=MAX_LENGTH_NAME,
-        unique=True
+        max_length=MAX_LENGTH_NAME
     )
     slug = models.SlugField(
         verbose_name='Slug-идентификатор',
@@ -25,25 +24,37 @@ class Tag(models.Model):
         unique=True
     )
 
+    class Meta:
+        verbose_name = 'Тэг'
+        verbose_name_plural = 'Тэги'
+        ordering = ('name',)
+
 
 class Ingredient(models.Model):
     """Ингредиенты для рецептов."""
 
     name = models.CharField(
         verbose_name='Ингредиент',
-        max_length=MAX_LENGTH_NAME,
-        unique=True
+        max_length=MAX_LENGTH_NAME
     )
     measurement_unit = models.CharField(
         verbose_name='Ед. измерения',
         max_length=MAX_LENGTH_INGRED,
     )
 
+    class Meta:
+        verbose_name = 'Ингридиент'
+        verbose_name_plural = 'Ингридиенты'
+        ordering = ('name',)
+
 
 class Recipe(models.Model):
     """Карточка рецепта."""
 
-    tags = models.ManyToManyField(Tag)
+    tags = models.ManyToManyField(
+        Tag,
+        related_name='recipes',
+    )
     ingredients = models.ManyToManyField(
         Ingredient,
         through='RecipeIngredient',
@@ -104,8 +115,14 @@ class Recipe(models.Model):
 class RecipeIngredient(models.Model):
     """Связующая модель рецептов и ингредиентов с количеством."""
 
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE
+    )
     amount = models.PositiveSmallIntegerField(verbose_name="Количество")
 
 

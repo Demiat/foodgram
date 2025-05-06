@@ -12,6 +12,7 @@ from api.serializers import (
     RecipesWriteSerializer,
     RecipesReadSerializer,
 )
+from users.permissions import IsAuthorOrAdminOnly
 
 
 class TagsViewSet(ModelViewSet):
@@ -40,13 +41,18 @@ class RecipesViewSet(ModelViewSet):
     """Контроллер рецептов."""
 
     queryset = Recipe.objects.all()
-    # serializer_class = RecipesSerializer
-    permission_classes = (IsAuthenticated,)
     pagination_class = LimitOffsetPagination
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def get_permissions(self):
+        if self.action in SAFE_METHODS:
+            self.permission_classes = (AllowAny,)
+        else:
+            self.permission_classes = (IsAuthorOrAdminOnly,)
+        return super().get_permissions()
 
     def get_serializer_class(self):
         if self.request.method in SAFE_METHODS:

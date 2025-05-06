@@ -104,8 +104,13 @@ class IngredientSerializer(serializers.ModelSerializer):
 class RecipeIngredientSerializer(serializers.ModelSerializer):
     """Рецепты с ингредиентами и кол-вом."""
 
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=Ingredient.objects.all(), source='ingredient'
+    )
+
     class Meta:
         model = RecipeIngredient
+        fields = ('id', 'amount')
 
     def to_representation(self, instance):
         ingredient_serialized = IngredientSerializer(instance.ingredient).data
@@ -143,11 +148,7 @@ class RecipesReadSerializer(serializers.ModelSerializer):
 class RecipesWriteSerializer(serializers.ModelSerializer):
 
     image = Base64ImageField(required=True)
-    tags = TagSerializer(many=True, read_only=True)
-    ingredients = RecipeIngredientSerializer(
-        many=True, read_only=True, source='recipeingredient_set'
-    )
-    author = UserSerializerDjoser(read_only=True)
+    ingredients = RecipeIngredientSerializer(many=True)
 
     class Meta:
         model = Recipe
@@ -157,7 +158,6 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             'ingredients',
             'is_favorited',
             'is_in_shopping_cart',
-            'author',
             'name',
             'text',
             'cooking_time',
@@ -170,22 +170,23 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             'text': {'trim_whitespace': True},
         }
 
+    def validate_tags(self, value):
+        return value
+
     def create(self, validated_data):
-        ingredients = self.initial_data.get('ingredients', [])
-        tags = self.initial_data.get('tags', [])
-        recipe = Recipe.objects.create(**validated_data)
+        ingredients = validated_data.pop('ingredients')
+        # tags = validated_data.pop('tags')
+        # recipe = Recipe.objects.create(**validated_data)
+        recipe = super().create(validated_data)
         for ingredient in ingredients:
-            current_ingredient = Ingredient.objects.get(
-                pk=ingredient['id']
-            )
             RecipeIngredient.objects.create(
-                ingredient=current_ingredient,
+                ingredient=ingredient['ingredient'],
                 recipe=recipe,
                 amount=ingredient['amount']
             )
-        recipe.tags.set(tags)
+        # recipe.tags.set(tags)
         return recipe
 
-    # def to_representation(self, recipe):
-    #     super().to_representation(self)
-    #     return RecipesReadSerializer(recipe, context=self.context).data
+    def to_representation(self, recipe):
+        super().to_representation(self)
+        return RecipesReadSerializer(recipe, context=self.context).data

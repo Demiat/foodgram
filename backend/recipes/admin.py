@@ -19,4 +19,3 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin): pass
-    # list_display = ('recipe', 'ingredient', 'amount')
