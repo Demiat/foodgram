@@ -12,6 +12,13 @@ from recipes.models import (
     RecipeIngredient,
 )
 from users.validators import username_regex_validator
+from .constants import (
+    REPETITIVE_INGREDIENTS,
+    REPETITIVE_TAGS,
+    EMTY_INGREDIENTS,
+    AMOUNT_INGREDIENTS,
+    EMTY_TAGS
+)
 
 
 class UserSerializerDjoser(UserSerializer):
@@ -147,7 +154,7 @@ class RecipesReadSerializer(serializers.ModelSerializer):
 class RecipesWriteSerializer(serializers.ModelSerializer):
 
     image = Base64ImageField(required=True)
-    ingredients = RecipeIngredientSerializer(many=True)
+    ingredients = RecipeIngredientSerializer(many=True, required=True)
 
     class Meta:
         model = Recipe
@@ -169,10 +176,27 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             'text': {'trim_whitespace': True},
         }
 
-    def validate_tags(self, value):
-        return value
+    def validate_tags(self, tags):
+        if not tags:
+            raise serializers.ValidationError(EMTY_TAGS)
+        if len(tags) != len(set(tags)):
+            raise serializers.ValidationError(REPETITIVE_TAGS)
+        return tags
+    
+    def validate_ingredients(self, ingredients):
+        ing = []
+        for ingredient in ingredients:
+            if ingredient['amount'] < 1:
+                raise serializers.ValidationError(AMOUNT_INGREDIENTS)
+            ing.append(ingredient['ingredient'])
+        if len(ing) != len(set(ing)):
+            raise serializers.ValidationError(REPETITIVE_INGREDIENTS)
+        if not ing:
+            raise serializers.ValidationError(EMTY_INGREDIENTS)
+        return ingredients
     
     def _set_recipe_ingredient(self, recipe, ingredients):
+        """Заполним связанную таблицу RecipeIngredient."""
         for ingredient in ingredients:
             RecipeIngredient.objects.create(
                 ingredient=ingredient['ingredient'],
@@ -187,10 +211,16 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
+        if 'ingredients' not in validated_data:
+            raise serializers.ValidationError()
+        if 'tags' not in validated_data:
+            raise serializers.ValidationError()
         ingredients = validated_data.pop('ingredients')
-        updated_recipe = super().update(instance, validated_data)
         instance.recipeingredient_set.all().delete()
-        self._set_recipe_ingredient(recipe=instance, ingredients=ingredients)
+        self._set_recipe_ingredient(
+            recipe=instance, ingredients=ingredients
+        )
+        updated_recipe = super().update(instance, validated_data)
         return updated_recipe
 
     def to_representation(self, recipe):

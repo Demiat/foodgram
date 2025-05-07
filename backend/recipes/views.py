@@ -48,11 +48,13 @@ class RecipesViewSet(ModelViewSet):
         serializer.save(author=self.request.user)
 
     def get_permissions(self):
-        if self.action in SAFE_METHODS:
-            self.permission_classes = (AllowAny,)
-        else:
-            self.permission_classes = (IsAuthorOrAdminOnly,)
-        return super().get_permissions()
+        if self.action in ['list', 'retrieve']:
+            self.permission_classes = [AllowAny]
+        elif self.action == 'create':
+            self.permission_classes = [IsAuthenticated]
+        elif self.action in ['partial_update', 'destroy']:
+            self.permission_classes = [IsAuthorOrAdminOnly]
+        return [permission() for permission in self.permission_classes]
 
     def get_serializer_class(self):
         if self.request.method in SAFE_METHODS:
