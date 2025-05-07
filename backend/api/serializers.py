@@ -121,7 +121,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 class RecipesReadSerializer(serializers.ModelSerializer):
 
-    image = Base64ImageField(required=True)
+    image = Base64ImageField()
     tags = TagSerializer(many=True, read_only=True)
     ingredients = RecipeIngredientSerializer(
         many=True, read_only=True, source='recipeingredient_set'
@@ -142,7 +142,6 @@ class RecipesReadSerializer(serializers.ModelSerializer):
             'cooking_time',
             'image',
         )
-        read_only_fields = fields
 
 
 class RecipesWriteSerializer(serializers.ModelSerializer):
@@ -172,21 +171,27 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
 
     def validate_tags(self, value):
         return value
-
-    def create(self, validated_data):
-        ingredients = validated_data.pop('ingredients')
-        # tags = validated_data.pop('tags')
-        # recipe = Recipe.objects.create(**validated_data)
-        recipe = super().create(validated_data)
+    
+    def _set_recipe_ingredient(self, recipe, ingredients):
         for ingredient in ingredients:
             RecipeIngredient.objects.create(
                 ingredient=ingredient['ingredient'],
                 recipe=recipe,
                 amount=ingredient['amount']
             )
-        # recipe.tags.set(tags)
+
+    def create(self, validated_data):
+        ingredients = validated_data.pop('ingredients')
+        recipe = super().create(validated_data)
+        self._set_recipe_ingredient(recipe=recipe, ingredients=ingredients)
         return recipe
 
+    def update(self, instance, validated_data):
+        ingredients = validated_data.pop('ingredients')
+        updated_recipe = super().update(instance, validated_data)
+        instance.recipeingredient_set.all().delete()
+        self._set_recipe_ingredient(recipe=instance, ingredients=ingredients)
+        return updated_recipe
+
     def to_representation(self, recipe):
-        super().to_representation(self)
         return RecipesReadSerializer(recipe, context=self.context).data
