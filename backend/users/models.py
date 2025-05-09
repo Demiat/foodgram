@@ -62,24 +62,32 @@ class User(AbstractUser):
 
 
 class Follow(models.Model):
-    """Подписчики."""
+    """
+    Поле follower обозначает пользователя, подписанного на автора.
+    Поле author обозначает пользователя, на которого
+    подписаны другие пользователи.
 
-    user = models.ForeignKey(
+    ivan.followings.all() - вернёт всех авторов, на которых подписан Иван
+    maria.followers.all() - вернёт всех пользов., которые подписались на Марию
+    """
+
+    follower = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='follower'
+        related_name="followings",
+        verbose_name="Подписчик"
     )
-    following = models.ForeignKey(
+    author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='followed_by'
+        related_name="followers",
+        verbose_name="Автор"
     )
 
     class Meta:
         constraints = (
             models.UniqueConstraint(
-                fields=('user', 'following'),
+                fields=('follower', 'author'),
                 name='unique_follow'
             ),
         )
-        default_related_name = '%(model_name)ss'

@@ -1,62 +1,62 @@
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.pagination import LimitOffsetPagination
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.permissions import SAFE_METHODS
+# from rest_framework.viewsets import ModelViewSet
+# from rest_framework.permissions import IsAuthenticated, AllowAny
+# from rest_framework.pagination import LimitOffsetPagination
+# from django_filters.rest_framework import DjangoFilterBackend
+# from rest_framework.permissions import SAFE_METHODS
 
-from .models import Recipe, Ingredient, Tag
-from api.filters import IngredientFilter
-from api.serializers import (
-    IngredientSerializer,
-    TagSerializer,
-    RecipesWriteSerializer,
-    RecipesReadSerializer,
-)
-from users.permissions import IsAuthorOrAdminOnly
-
-
-class TagsViewSet(ModelViewSet):
-    """Контроллер Тэгов, GET."""
-
-    queryset = Tag.objects.all()
-    permission_classes = (AllowAny,)
-    serializer_class = TagSerializer
-    pagination_class = None
-    http_method_names = ('get',)
+# from .models import Recipe, Ingredient, Tag
+# from api.filters import IngredientFilter
+# from api.serializers import (
+#     IngredientSerializer,
+#     TagSerializer,
+#     RecipesWriteSerializer,
+#     RecipesReadSerializer,
+# )
+# from users.permissions import IsAuthorOrAdminOnly
 
 
-class IngredientsViewSet(ModelViewSet):
-    """Контроллер ингредиентов, GET."""
+# class TagsViewSet(ModelViewSet):
+#     """Контроллер Тэгов, GET."""
 
-    queryset = Ingredient.objects.all()
-    permission_classes = (AllowAny,)
-    serializer_class = IngredientSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = IngredientFilter
-    pagination_class = None
-    http_method_names = ('get',)
+#     queryset = Tag.objects.all()
+#     permission_classes = (AllowAny,)
+#     serializer_class = TagSerializer
+#     pagination_class = None
+#     http_method_names = ('get',)
 
 
-class RecipesViewSet(ModelViewSet):
-    """Контроллер рецептов."""
+# class IngredientsViewSet(ModelViewSet):
+#     """Контроллер ингредиентов, GET."""
 
-    queryset = Recipe.objects.all()
-    pagination_class = LimitOffsetPagination
-    http_method_names = ('get', 'post', 'patch', 'delete')
+#     queryset = Ingredient.objects.all()
+#     permission_classes = (AllowAny,)
+#     serializer_class = IngredientSerializer
+#     filter_backends = (DjangoFilterBackend,)
+#     filterset_class = IngredientFilter
+#     pagination_class = None
+#     http_method_names = ('get',)
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
 
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            self.permission_classes = [AllowAny]
-        elif self.action == 'create':
-            self.permission_classes = [IsAuthenticated]
-        elif self.action in ['partial_update', 'destroy']:
-            self.permission_classes = [IsAuthorOrAdminOnly]
-        return [permission() for permission in self.permission_classes]
+# class RecipesViewSet(ModelViewSet):
+#     """Контроллер рецептов."""
 
-    def get_serializer_class(self):
-        if self.request.method in SAFE_METHODS:
-            return RecipesReadSerializer
-        return RecipesWriteSerializer
+#     queryset = Recipe.objects.all()
+#     pagination_class = LimitOffsetPagination
+#     http_method_names = ('get', 'post', 'patch', 'delete')
+
+#     def perform_create(self, serializer):
+#         serializer.save(author=self.request.user)
+
+#     def get_permissions(self):
+#         if self.action in ['list', 'retrieve']:
+#             self.permission_classes = [AllowAny]
+#         elif self.action == 'create':
+#             self.permission_classes = [IsAuthenticated]
+#         elif self.action in ['partial_update', 'destroy']:
+#             self.permission_classes = [IsAuthorOrAdminOnly]
+#         return [permission() for permission in self.permission_classes]
+
+#     def get_serializer_class(self):
+#         if self.request.method in SAFE_METHODS:
+#             return RecipesReadSerializer
+#         return RecipesWriteSerializer

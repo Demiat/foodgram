@@ -17,7 +17,7 @@ from .constants import (
     REPETITIVE_TAGS,
     EMTY_INGREDIENTS,
     AMOUNT_INGREDIENTS,
-    EMTY_TAGS
+    EMTY_TAGS,
 )
 
 
@@ -182,7 +182,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         if len(tags) != len(set(tags)):
             raise serializers.ValidationError(REPETITIVE_TAGS)
         return tags
-    
+
     def validate_ingredients(self, ingredients):
         ing = []
         for ingredient in ingredients:
@@ -194,7 +194,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         if not ing:
             raise serializers.ValidationError(EMTY_INGREDIENTS)
         return ingredients
-    
+
     def _set_recipe_ingredient(self, recipe, ingredients):
         """Заполним связанную таблицу RecipeIngredient."""
         for ingredient in ingredients:
@@ -225,3 +225,52 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, recipe):
         return RecipesReadSerializer(recipe, context=self.context).data
+
+
+class ShortLinkSerializer(serializers.ModelSerializer):
+    """Выводит короткую уникальную ссылку для рецепта."""
+
+    def to_representation(self, instance):
+        request = self.context['request']
+        base_url = request.build_absolute_uri('/')
+        full_short_link = f'{base_url}s/{instance.short_code}'
+        return {'short-link': full_short_link}
+
+    class Meta:
+        model = Recipe
+        fields = ('short_code',)
+
+
+class LimitedRecipesReadSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'email',
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'is_subscribed',
+            'recipes',
+            'recipes_count',
+            'avatar'
+        )
+
+    def get_recipes(self, obj):
+        limit = self.context['recipes_limit']
+        return LimitedRecipesReadSerializer(
+            obj.recipes.all()[:limit], many=True).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()

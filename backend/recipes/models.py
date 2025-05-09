@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 
@@ -6,7 +8,8 @@ from .constants import (
     MAX_LENGTH_SLUG,
     MAX_LENGTH_INGRED,
     MAX_LENGTH_TEXT,
-    MAX_COOKING_TIME
+    MAX_COOKING_TIME,
+    MAX_LENGTH_LINK
 )
 from users.models import User
 
@@ -53,7 +56,7 @@ class Recipe(models.Model):
 
     tags = models.ManyToManyField(
         Tag,
-        related_name='recipes',
+        related_name='recipes_tags',
     )
     ingredients = models.ManyToManyField(
         Ingredient,
@@ -62,7 +65,8 @@ class Recipe(models.Model):
     )
     author = models.ForeignKey(
         User,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        related_name='recipes'
     )
     name = models.CharField(
         verbose_name='Рецепт',
@@ -83,6 +87,14 @@ class Recipe(models.Model):
         'Изображение рецепта',
         upload_to='recipes/images/',
     )
+    short_code = models.CharField(
+        'short-link рецепта',
+        max_length=MAX_LENGTH_LINK,
+        default=None,
+        null=True,
+        unique=True
+    )
+    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
 
     def __str__(self):
         return self.name
@@ -110,6 +122,16 @@ class Recipe(models.Model):
             return self.shoppingcarts.filter(recipe=self, user=user).exists()
         else:
             return False
+
+    def save(self, *args, **kwargs):
+        if not self.short_code:
+            self.short_code = uuid.uuid4().hex[:MAX_LENGTH_LINK]
+            while Recipe.objects.filter(short_code=self.short_code).exists():
+                self.short_code = uuid.uuid4().hex[:MAX_LENGTH_LINK]
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ('-pub_date',)
 
 
 class RecipeIngredient(models.Model):
