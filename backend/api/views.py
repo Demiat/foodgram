@@ -7,20 +7,21 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import SAFE_METHODS
+from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
 from django.conf import settings
 from djoser.serializers import SetPasswordSerializer
 
-from users.models import User
-from api.serializers import (
-    UserCreateSerializerDjoser,
-    UserSerializerDjoser,
-    AvatarSetSerializer,
-)
+from users.models import User, Follow
 from recipes.models import Recipe, Ingredient, Tag
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (
+    UserCreateSerializerDjoser,
+    UserSerializerDjoser,
+    AvatarSetSerializer,
     IngredientSerializer,
     TagSerializer,
     RecipesWriteSerializer,
@@ -30,6 +31,10 @@ from .serializers import (
 
 )
 from users.permissions import IsAuthorOrAdminOnly
+from .constants import (
+    FOLLOWING_ERROR,
+    SELF_FOLLOWING
+)
 
 
 class UserViewSet(ModelViewSet):
@@ -92,17 +97,24 @@ class UserViewSet(ModelViewSet):
             request.user.avatar.delete(save=True)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _get_queryset_users(self, request, *args, **kwargs):
-        """Формирует кверисет подписчиков с рецептами."""
-        # Получаем список пользователей, на которых подписаны
-        followed_users = self.request.user.followings.values_list(
-            'author', flat=True)
-        # Получаем limit рецептов или будем выводить все рецепты
+    def _get_limit(self, request):
+        """Получает limit рецептов или будем выводить все рецепты."""
         try:
             limit = int(request.query_params.get('recipes_limit'))
         except (ValueError, TypeError):
             limit = None
-        context = {'recipes_limit': limit}
+        return {'recipes_limit': limit}
+
+    @action(
+        detail=False,
+        methods=['GET'],
+        url_path='subscriptions',
+        permission_classes=(IsAuthenticated,)
+    )
+    def subscriptions(self, request):
+        # Получаем список пользователей, на которых подписаны
+        followed_users = self.request.user.followings.values_list(
+            'author', flat=True)
         # Формируем список рецептов
         recipe_prefetch = Prefetch(
             'recipes', queryset=Recipe.objects.order_by(
@@ -111,23 +123,41 @@ class UserViewSet(ModelViewSet):
         # Соединяем рецепты с каждым пользователем, на которого подписаны
         queryset = User.objects.filter(
             id__in=followed_users).prefetch_related(recipe_prefetch)
-        return queryset, context
 
-    @action(
-        detail=False,
-        methods=['GET'],
-        url_path='subscriptions',
-        permission_classes=(IsAuthenticated,)
-    )
-    def subscriptions(self, request, *args, **kwargs):
-        queryset, context = self._get_queryset_users(request, *args, **kwargs)
+        context = self._get_limit(request)
         page = self.paginate_queryset(queryset)
         if page:
             return self.get_paginated_response(
                 SubscriptionSerializer(page, many=True, context=context).data
             )
-        # serializer = SubscriptionSerializer(queryset, many=True, context=context)
-        # return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=['POST', 'DELETE'],
+        url_path='subscribe',
+        permission_classes=(IsAuthenticated,)
+    )
+    def subscribe(self, request, *args, **kwargs):
+        if request.method == 'POST':
+            author = get_object_or_404(User, pk=kwargs['pk'])
+            if author == request.user:
+                raise ValidationError(SELF_FOLLOWING)
+            try:
+                Follow.objects.create(
+                    follower=request.user,
+                    author=author
+                )
+            except IntegrityError:
+                raise ValidationError(FOLLOWING_ERROR)
+            context = self._get_limit(request)
+            return Response(
+                SubscriptionSerializer(
+                    author.recipes.all().order_by(*Recipe._meta.ordering),
+                    many=True, context=context).data,
+                status=status.HTTP_201_CREATED
+            )
+        elif request.method == 'DELETE':
+            pass
 
 
 class TagsViewSet(ModelViewSet):
