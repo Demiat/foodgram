@@ -10,6 +10,8 @@ from recipes.models import (
     Ingredient,
     Recipe,
     RecipeIngredient,
+    Favorite,
+    ShoppingCart,
 )
 from users.validators import username_regex_validator
 from .constants import (
@@ -25,6 +27,7 @@ class UserSerializerDjoser(UserSerializer):
     """Обрабатывает модель пользователей."""
 
     avatar = serializers.ImageField(read_only=True)
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta(UserSerializer.Meta):
         model = User
@@ -37,7 +40,11 @@ class UserSerializerDjoser(UserSerializer):
             'avatar',
             'is_subscribed',
         )
-        read_only_fields = ('avatar', 'is_subscribed')
+        # read_only_fields = ('avatar', 'is_subscribed')
+
+    def get_is_subscribed(self, author):
+        follower = self.context['request'].user
+        return follower.check_subscription(author)
 
 
 class UserCreateSerializerDjoser(UserCreateSerializer):
@@ -134,6 +141,8 @@ class RecipesReadSerializer(serializers.ModelSerializer):
         many=True, read_only=True, source='recipeingredient_set'
     )
     author = UserSerializerDjoser(read_only=True)
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -149,6 +158,14 @@ class RecipesReadSerializer(serializers.ModelSerializer):
             'cooking_time',
             'image',
         )
+
+    def get_is_favorited(self, recipe):
+        user = self.context['request'].user
+        return Favorite.objects.filter(recipe=recipe, user=user).exists()
+
+    def get_is_in_shopping_cart(self, recipe):
+        user = self.context['request'].user
+        return ShoppingCart.objects.filter(recipe=recipe, user=user).exists()
 
 
 class RecipesWriteSerializer(serializers.ModelSerializer):

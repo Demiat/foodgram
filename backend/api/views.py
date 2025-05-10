@@ -17,8 +17,8 @@ from django.conf import settings
 from djoser.serializers import SetPasswordSerializer
 
 from users.models import User, Follow
-from recipes.models import Recipe, Ingredient, Tag
-from .filters import IngredientFilter, RecipeFilter
+from recipes.models import Recipe, Ingredient, Tag, Favorite, ShoppingCart
+from .filters import IngredientFilter, RecipeFilter, ShoppingCartFilter
 from .serializers import (
     UserCreateSerializerDjoser,
     UserSerializerDjoser,
@@ -29,6 +29,7 @@ from .serializers import (
     RecipesReadSerializer,
     ShortLinkSerializer,
     SubscriptionSerializer,
+    LimitedRecipesReadSerializer,
 
 )
 from users.permissions import IsAuthorOrAdminOnly
@@ -113,7 +114,7 @@ class UserViewSet(ModelViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def subscriptions(self, request):
-        """Выводит список авторов с рецептами, на которых подписан user."""
+        """Выводит список авторов (с рецептами), на которых подписан user."""
         context = {'request': request, **self._get_limit(request)}
         # Получаем список пользователей, на которых подписаны
         followed_users = self.request.user.followings.values_list(
@@ -194,8 +195,9 @@ class RecipesViewSet(ModelViewSet):
 
     queryset = Recipe.objects.all()
     pagination_class = LimitOffsetPagination
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
+    additional_filter_backends = [ShoppingCartFilter]
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def perform_create(self, serializer):
@@ -228,3 +230,59 @@ class RecipesViewSet(ModelViewSet):
                 context={'request': request}
             ).data
         )
+
+    @action(
+        detail=True,
+        methods=['POST', 'DELETE'],
+        url_path=settings.FAVORITES_POINT,
+        permission_classes=(IsAuthenticated,)
+    )
+    def favorite(self, request, *args, **kwargs):
+        recipe = get_object_or_404(Recipe, pk=kwargs['pk'])
+        if request.method == 'POST':
+            try:
+                Favorite.objects.create(
+                    user=request.user,
+                    recipe=recipe
+                )
+            except IntegrityError:
+                raise ValidationError(FOLLOWING_ERROR)
+            return Response(
+                LimitedRecipesReadSerializer(recipe).data,
+                status=status.HTTP_201_CREATED
+            )
+        elif request.method == 'DELETE':
+            try:
+                Favorite.objects.get(
+                    user=request.user, recipe=recipe).delete()
+            except ObjectDoesNotExist:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=True,
+        methods=['POST', 'DELETE'],
+        url_path=settings.SHOPPING_CART_POINT,
+        permission_classes=(IsAuthenticated,)
+    )
+    def shopping_cart(self, request, *args, **kwargs):
+        recipe = get_object_or_404(Recipe, pk=kwargs['pk'])
+        if request.method == 'POST':
+            try:
+                ShoppingCart.objects.create(
+                    user=request.user,
+                    recipe=recipe
+                )
+            except IntegrityError:
+                raise ValidationError(FOLLOWING_ERROR)
+            return Response(
+                LimitedRecipesReadSerializer(recipe).data,
+                status=status.HTTP_201_CREATED
+            )
+        elif request.method == 'DELETE':
+            try:
+                ShoppingCart.objects.get(
+                    user=request.user, recipe=recipe).delete()
+            except ObjectDoesNotExist:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_204_NO_CONTENT)

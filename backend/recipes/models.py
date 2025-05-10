@@ -99,31 +99,8 @@ class Recipe(models.Model):
     def __str__(self):
         return self.name
 
-    @property
-    def is_favorited(self):
-        """
-        Проверяет, содержится ли рецепт в избранном у текущего пользователя.
-        Передать в контекстах обработки: obj._request_user = self.request.user
-        """
-        if hasattr(self, '_request_user'):
-            user = getattr(self, '_request_user')
-            return self.favorites.filter(recipe=self, user=user).exists()
-        else:
-            return False
-
-    @property
-    def is_in_shopping_cart(self):
-        """
-        Проверяет, содержится ли рецепт в списке покупок текущего пользователя.
-        Передать в контекстах обработки: obj._request_user = self.request.user
-        """
-        if hasattr(self, '_request_user'):
-            user = getattr(self, '_request_user')
-            return self.shoppingcarts.filter(recipe=self, user=user).exists()
-        else:
-            return False
-
     def save(self, *args, **kwargs):
+        """Создает и сохраняет уникальный код для короткой ссылки на рецепт."""
         if not self.short_code:
             self.short_code = uuid.uuid4().hex[:MAX_LENGTH_LINK]
             while Recipe.objects.filter(short_code=self.short_code).exists():
@@ -161,19 +138,18 @@ class FavoriteShoppingCartAbstractModel(models.Model):
 
     class Meta:
         abstract = True
-        default_related_name = '%(model_name)ss'
 
 
 class Favorite(FavoriteShoppingCartAbstractModel):
 
     class Meta(FavoriteShoppingCartAbstractModel.Meta):
-        verbose_name = 'Избранное'
         constraints = (
             models.UniqueConstraint(
                 fields=('user', 'recipe'),
                 name='unique_favorite'
             ),
         )
+        verbose_name = 'Избранное'
 
 
 class ShoppingCart(FavoriteShoppingCartAbstractModel):

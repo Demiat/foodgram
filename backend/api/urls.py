@@ -6,7 +6,7 @@ from .views import (
     IngredientsViewSet,
     TagsViewSet,
     UserViewSet,
-    # RecipeDetailView
+    # RecipeDetailView,
 )
 
 api_v1_router = DefaultRouter()
@@ -15,7 +15,6 @@ api_v1_router.register('recipes', RecipesViewSet, basename='recipes')
 api_v1_router.register('tags', TagsViewSet, basename='tags')
 api_v1_router.register(
     'ingredients', IngredientsViewSet, basename='ingredients')
-
 
 urlpatterns = [
     # path(
