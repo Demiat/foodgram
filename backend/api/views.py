@@ -109,7 +109,7 @@ class UserViewSet(ModelViewSet):
     @action(
         detail=False,
         methods=['GET'],
-        url_path='subscriptions',
+        url_path=settings.SUBSCRIPTIONS_POINT,
         permission_classes=(IsAuthenticated,)
     )
     def subscriptions(self, request):
@@ -135,7 +135,7 @@ class UserViewSet(ModelViewSet):
     @action(
         detail=True,
         methods=['POST', 'DELETE'],
-        url_path='subscribe',
+        url_path=settings.SUBSCRIBE_POINT,
         permission_classes=(IsAuthenticated,)
     )
     def subscribe(self, request, *args, **kwargs):
@@ -213,3 +213,17 @@ class RecipesViewSet(ModelViewSet):
         if self.request.method in SAFE_METHODS:
             return RecipesReadSerializer
         return RecipesWriteSerializer
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path=settings.GET_LINK_POINT,
+        permission_classes=(AllowAny,)
+    )
+    def get_short_link(self, request, *args, **kwargs):
+        return Response(
+            ShortLinkSerializer(
+                instance=get_object_or_404(Recipe, pk=kwargs['pk']),
+                context=request
+            )
+        )

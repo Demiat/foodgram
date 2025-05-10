@@ -148,3 +148,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SELF_PROFILE_POINT = 'me'
 AVATAR_POINT = 'avatar'
+SUBSCRIBE_POINT = 'subscribe'
+SUBSCRIPTIONS_POINT = 'subscriptions'
+GET_LINK_POINT = 'get-link'

@@ -1,7 +1,13 @@
 from django.contrib.auth.models import AbstractUser
+from rest_framework.exceptions import ValidationError
 from django.db import models
 
-from .constants import MAX_LENGTH_EMAIL, LENGTH_USERNAME, USERNAME_REGEX_TEXT
+from .constants import (
+    MAX_LENGTH_EMAIL,
+    LENGTH_USERNAME,
+    USERNAME_REGEX_TEXT,
+    SELF_FOLLOWING
+)
 from .validators import username_regex_validator
 
 
@@ -91,3 +97,9 @@ class Follow(models.Model):
                 name='unique_follow'
             ),
         )
+
+    # def clean(self):
+    #     """Проверяет базовые условия, данные для которых сразу имеются."""
+    #     # Нельзя подписываться на самого себя
+    #     if self.follower == self.author:
+    #         raise ValidationError({"detail": SELF_FOLLOWING})
