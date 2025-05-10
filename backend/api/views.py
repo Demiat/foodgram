@@ -9,6 +9,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
@@ -112,10 +113,12 @@ class UserViewSet(ModelViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def subscriptions(self, request):
+        """Выводит список авторов с рецептами, на которых подписан user."""
+        context = self._get_limit(request)
         # Получаем список пользователей, на которых подписаны
         followed_users = self.request.user.followings.values_list(
             'author', flat=True)
-        # Формируем список рецептов
+        # Подготовим список рецептов с условием
         recipe_prefetch = Prefetch(
             'recipes', queryset=Recipe.objects.order_by(
                 *Recipe._meta.ordering)
@@ -124,12 +127,10 @@ class UserViewSet(ModelViewSet):
         queryset = User.objects.filter(
             id__in=followed_users).prefetch_related(recipe_prefetch)
 
-        context = self._get_limit(request)
-        page = self.paginate_queryset(queryset)
-        if page:
-            return self.get_paginated_response(
-                SubscriptionSerializer(page, many=True, context=context).data
-            )
+        page = self.paginate_queryset(queryset) or []
+        return self.get_paginated_response(
+            SubscriptionSerializer(page, many=True, context=context).data
+        )
 
     @action(
         detail=True,
@@ -138,8 +139,8 @@ class UserViewSet(ModelViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def subscribe(self, request, *args, **kwargs):
+        author = get_object_or_404(User, pk=kwargs['pk'])
         if request.method == 'POST':
-            author = get_object_or_404(User, pk=kwargs['pk'])
             if author == request.user:
                 raise ValidationError(SELF_FOLLOWING)
             try:
@@ -152,12 +153,17 @@ class UserViewSet(ModelViewSet):
             context = self._get_limit(request)
             return Response(
                 SubscriptionSerializer(
-                    author.recipes.all().order_by(*Recipe._meta.ordering),
-                    many=True, context=context).data,
+                    author,
+                    context=context).data,
                 status=status.HTTP_201_CREATED
             )
         elif request.method == 'DELETE':
-            pass
+            try:
+                Follow.objects.get(
+                    follower=request.user, author=author).delete()
+            except ObjectDoesNotExist:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TagsViewSet(ModelViewSet):
