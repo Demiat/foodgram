@@ -6,7 +6,6 @@ from .constants import (
     MAX_LENGTH_EMAIL,
     LENGTH_USERNAME,
     USERNAME_REGEX_TEXT,
-    SELF_FOLLOWING
 )
 from .validators import username_regex_validator
 
@@ -53,18 +52,10 @@ class User(AbstractUser):
     def __str__(self):
         return self.username[:LENGTH_USERNAME]
 
-    @property
-    def is_subscribed(self):
-        """
-        Проверяет, подписан ли пользователь на другого пользователя.
-        Предполагается наличие атрибута request.user
-        в контексте запросов Django: obj._request_user = self.request.user
-        """
-        if hasattr(self, '_request_user'):
-            user = getattr(self, '_request_user')
-            return self.follows.filter(following=self, user=user).exists()
-        else:
-            return False
+    def check_subscription(self, author):
+        """Подписан ли текущий пользователь на указанного автора."""
+        if isinstance(author, User):
+            return self.followings.filter(author=author).exists()
 
 
 class Follow(models.Model):
@@ -97,9 +88,3 @@ class Follow(models.Model):
                 name='unique_follow'
             ),
         )
-
-    # def clean(self):
-    #     """Проверяет базовые условия, данные для которых сразу имеются."""
-    #     # Нельзя подписываться на самого себя
-    #     if self.follower == self.author:
-    #         raise ValidationError({"detail": SELF_FOLLOWING})

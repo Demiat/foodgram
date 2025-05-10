@@ -252,6 +252,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -267,10 +268,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'avatar'
         )
 
-    def get_recipes(self, obj):
+    def get_recipes(self, authors):
         limit = self.context['recipes_limit']
         return LimitedRecipesReadSerializer(
-            obj.recipes.all()[:limit], many=True).data
+            authors.recipes.all()[:limit], many=True).data
 
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
+    def get_is_subscribed(self, author):
+        follower = self.context['request'].user
+        return follower.check_subscription(author)
+
+    def get_recipes_count(self, author):
+        return author.recipes.count()

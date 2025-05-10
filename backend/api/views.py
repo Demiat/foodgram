@@ -114,18 +114,19 @@ class UserViewSet(ModelViewSet):
     )
     def subscriptions(self, request):
         """Выводит список авторов с рецептами, на которых подписан user."""
-        context = self._get_limit(request)
+        context = {'request': request, **self._get_limit(request)}
         # Получаем список пользователей, на которых подписаны
         followed_users = self.request.user.followings.values_list(
             'author', flat=True)
-        # Подготовим список рецептов с условием
+        # Подготовим список рецептов с сортировкой
         recipe_prefetch = Prefetch(
             'recipes', queryset=Recipe.objects.order_by(
                 *Recipe._meta.ordering)
         )
         # Соединяем рецепты с каждым пользователем, на которого подписаны
         queryset = User.objects.filter(
-            id__in=followed_users).prefetch_related(recipe_prefetch)
+            id__in=followed_users).prefetch_related(
+                recipe_prefetch).order_by(*User._meta.ordering)
 
         page = self.paginate_queryset(queryset) or []
         return self.get_paginated_response(
@@ -150,7 +151,7 @@ class UserViewSet(ModelViewSet):
                 )
             except IntegrityError:
                 raise ValidationError(FOLLOWING_ERROR)
-            context = self._get_limit(request)
+            context = {'request': request, **self._get_limit(request)}
             return Response(
                 SubscriptionSerializer(
                     author,
@@ -224,6 +225,6 @@ class RecipesViewSet(ModelViewSet):
         return Response(
             ShortLinkSerializer(
                 instance=get_object_or_404(Recipe, pk=kwargs['pk']),
-                context=request
-            )
+                context={'request': request}
+            ).data
         )
