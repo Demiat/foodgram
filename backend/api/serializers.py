@@ -44,6 +44,8 @@ class UserSerializerDjoser(UserSerializer):
 
     def get_is_subscribed(self, author):
         follower = self.context['request'].user
+        if follower.is_anonymous:
+            return False
         return follower.check_subscription(author)
 
 
@@ -161,10 +163,14 @@ class RecipesReadSerializer(serializers.ModelSerializer):
 
     def get_is_favorited(self, recipe):
         user = self.context['request'].user
+        if user.is_anonymous:
+            return False
         return Favorite.objects.filter(recipe=recipe, user=user).exists()
 
     def get_is_in_shopping_cart(self, recipe):
         user = self.context['request'].user
+        if user.is_anonymous:
+            return False
         return ShoppingCart.objects.filter(recipe=recipe, user=user).exists()
 
 

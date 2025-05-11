@@ -1,24 +1,26 @@
+import csv
+
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from django.conf import settings
 from djoser.serializers import SetPasswordSerializer
+from django.http import HttpResponse
 
 from users.models import User, Follow
-from recipes.models import Recipe, Ingredient, Tag, Favorite, ShoppingCart
-from .filters import IngredientFilter, RecipeFilter, ShoppingCartFilter
+from recipes.models import (
+    Recipe, Ingredient, Tag, Favorite, ShoppingCart, RecipeIngredient
+)
+from .filters import IngredientFilter, RecipeFilter
 from .serializers import (
     UserCreateSerializerDjoser,
     UserSerializerDjoser,
@@ -194,10 +196,8 @@ class RecipesViewSet(ModelViewSet):
     """Контроллер рецептов."""
 
     queryset = Recipe.objects.all()
-    pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
-    additional_filter_backends = [ShoppingCartFilter]
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def perform_create(self, serializer):
@@ -286,3 +286,33 @@ class RecipesViewSet(ModelViewSet):
             except ObjectDoesNotExist:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=False,
+        methods=['GET'],
+        url_path=settings.DOWNLOAD_CART_POINT,
+        permission_classes=(IsAuthenticated,)
+    )
+    def download_shopping_cart(self, request, *args, **kwargs):
+        """Отдаёт файл со списком игредиентов к покупке."""
+        recipes_ids = ShoppingCart.objects.values_list(
+            'recipe', flat=True).filter(user=request.user)
+        ingredients_with_amount = RecipeIngredient.objects.filter(
+            recipe__in=recipes_ids).values(
+                'ingredient__name', 'ingredient__measurement_unit').annotate(
+                total_amount=Sum('amount'))
+
+        response = HttpResponse(content_type="text/csv")
+        response['Content-Disposition'] = 'attachment; filename="products.csv"'
+
+        writer = csv.writer(response)  # передаём объект потока вывода
+        writer.writerow(['Ingredients', 'Total Amount', 'Measurement_unit'])
+
+        for ingredient in ingredients_with_amount:
+            writer.writerow(
+                [ingredient['ingredient__name'],
+                 ingredient['total_amount'],
+                 ingredient['ingredient__measurement_unit']]
+            )
+
+        return response
