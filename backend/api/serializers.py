@@ -20,6 +20,8 @@ from .constants import (
     EMTY_INGREDIENTS,
     AMOUNT_INGREDIENTS,
     EMTY_TAGS,
+    IS_FAVORITED_PARAM_NAME,
+    IS_SHOPPING_CART_PARAM_NAME
 )
 
 
@@ -40,7 +42,6 @@ class UserSerializerDjoser(UserSerializer):
             'avatar',
             'is_subscribed',
         )
-        # read_only_fields = ('avatar', 'is_subscribed')
 
     def get_is_subscribed(self, author):
         follower = self.context['request'].user
@@ -145,6 +146,10 @@ class RecipesReadSerializer(serializers.ModelSerializer):
     author = UserSerializerDjoser(read_only=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
+    # is_favorited = serializers.SerializerMethodField(
+    #     method_name='general_method')
+    # is_in_shopping_cart = serializers.SerializerMethodField(
+    #     method_name='general_method')
 
     class Meta:
         model = Recipe
@@ -161,17 +166,34 @@ class RecipesReadSerializer(serializers.ModelSerializer):
             'image',
         )
 
-    def get_is_favorited(self, recipe):
+    def _general_method(self, recipe, param_name):
         user = self.context['request'].user
         if user.is_anonymous:
             return False
-        return Favorite.objects.filter(recipe=recipe, user=user).exists()
+        if param_name == IS_SHOPPING_CART_PARAM_NAME:
+            manager = ShoppingCart.objects
+        elif param_name == IS_FAVORITED_PARAM_NAME:
+            manager = Favorite.objects
+        return manager.filter(recipe=recipe, user=user).exists()
+
+    def get_is_favorited(self, recipe):
+        return self._general_method(recipe, param_name=IS_FAVORITED_PARAM_NAME)
 
     def get_is_in_shopping_cart(self, recipe):
-        user = self.context['request'].user
-        if user.is_anonymous:
-            return False
-        return ShoppingCart.objects.filter(recipe=recipe, user=user).exists()
+        return self._general_method(
+            recipe, param_name=IS_SHOPPING_CART_PARAM_NAME)
+
+    # def get_is_favorited(self, recipe):
+    #     user = self.context['request'].user
+    #     if user.is_anonymous:
+    #         return False
+    #     return Favorite.objects.filter(recipe=recipe, user=user).exists()
+
+    # def get_is_in_shopping_cart(self, recipe):
+    #     user = self.context['request'].user
+    #     if user.is_anonymous:
+    #         return False
+    #     return ShoppingCart.objects.filter(recipe=recipe, user=user).exists()
 
 
 class RecipesWriteSerializer(serializers.ModelSerializer):
@@ -185,16 +207,12 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             'id',
             'tags',
             'ingredients',
-            'is_favorited',
-            'is_in_shopping_cart',
             'name',
             'text',
             'cooking_time',
             'image',
         )
         extra_kwargs = {
-            'is_favorited': {'read_only': True},
-            'is_in_shopping_cart': {'read_only': True},
             'cooking_time': {'min_value': 1, 'max_value': 240},
             'text': {'trim_whitespace': True},
         }

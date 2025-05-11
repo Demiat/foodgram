@@ -37,7 +37,9 @@ from .serializers import (
 from users.permissions import IsAuthorOrAdminOnly
 from .constants import (
     FOLLOWING_ERROR,
-    SELF_FOLLOWING
+    SELF_FOLLOWING,
+    IS_FAVORITED_PARAM_NAME,
+    IS_SHOPPING_CART_PARAM_NAME
 )
 
 
@@ -62,7 +64,10 @@ class UserViewSet(ModelViewSet):
     def get_me_data(self, request):
         """Получение своей учетной записи."""
         return Response(
-            UserSerializerDjoser(request.user).data, status=status.HTTP_200_OK
+            UserSerializerDjoser(
+                request.user,
+                context={"request": request}).data,
+            status=status.HTTP_200_OK
         )
 
     @action(
@@ -231,17 +236,16 @@ class RecipesViewSet(ModelViewSet):
             ).data
         )
 
-    @action(
-        detail=True,
-        methods=['POST', 'DELETE'],
-        url_path=settings.FAVORITES_POINT,
-        permission_classes=(IsAuthenticated,)
-    )
-    def favorite(self, request, *args, **kwargs):
+    def _general_methods(self, request, *args, param_name=None, **kwargs):
+        """Добавляет рецепт в избранное или список покупок."""
         recipe = get_object_or_404(Recipe, pk=kwargs['pk'])
+        if param_name == IS_SHOPPING_CART_PARAM_NAME:
+            manager = ShoppingCart.objects
+        elif param_name == IS_FAVORITED_PARAM_NAME:
+            manager = Favorite.objects
         if request.method == 'POST':
             try:
-                Favorite.objects.create(
+                manager.create(
                     user=request.user,
                     recipe=recipe
                 )
@@ -253,7 +257,7 @@ class RecipesViewSet(ModelViewSet):
             )
         elif request.method == 'DELETE':
             try:
-                Favorite.objects.get(
+                manager.get(
                     user=request.user, recipe=recipe).delete()
             except ObjectDoesNotExist:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -262,30 +266,24 @@ class RecipesViewSet(ModelViewSet):
     @action(
         detail=True,
         methods=['POST', 'DELETE'],
+        url_path=settings.FAVORITES_POINT,
+        permission_classes=(IsAuthenticated,)
+    )
+    def favorite(self, request, *args, **kwargs):
+        """Добавляет рецепт в избранное."""
+        return self._general_methods(
+            request, *args, param_name=IS_FAVORITED_PARAM_NAME, **kwargs)
+
+    @action(
+        detail=True,
+        methods=['POST', 'DELETE'],
         url_path=settings.SHOPPING_CART_POINT,
         permission_classes=(IsAuthenticated,)
     )
     def shopping_cart(self, request, *args, **kwargs):
-        recipe = get_object_or_404(Recipe, pk=kwargs['pk'])
-        if request.method == 'POST':
-            try:
-                ShoppingCart.objects.create(
-                    user=request.user,
-                    recipe=recipe
-                )
-            except IntegrityError:
-                raise ValidationError(FOLLOWING_ERROR)
-            return Response(
-                LimitedRecipesReadSerializer(recipe).data,
-                status=status.HTTP_201_CREATED
-            )
-        elif request.method == 'DELETE':
-            try:
-                ShoppingCart.objects.get(
-                    user=request.user, recipe=recipe).delete()
-            except ObjectDoesNotExist:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            return Response(status=status.HTTP_204_NO_CONTENT)
+        """Добавляет рецепт в список покупок."""
+        return self._general_methods(
+            request, *args, param_name=IS_SHOPPING_CART_PARAM_NAME, **kwargs)
 
     @action(
         detail=False,
