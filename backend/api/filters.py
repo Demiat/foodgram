@@ -1,5 +1,5 @@
 from django_filters import rest_framework, ModelMultipleChoiceFilter, filters
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Case, When, Value, CharField
 
 from recipes.models import Ingredient, Recipe, Tag, ShoppingCart, Favorite
 from .constants import IS_FAVORITED_PARAM_NAME, IS_SHOPPING_CART_PARAM_NAME
@@ -15,20 +15,20 @@ class IngredientFilter(rest_framework.FilterSet):
         fields = ('name',)
 
     def combined_search(self, queryset, name, value):
-        # Фильтрация по точному совпадению в начале строки
-        startswith_queryset = queryset.filter(name__istartswith=value)
-
-        # Фильтрация по вхождению в произвольном месте
-        # с исключением по поиску в начале строки
-        contains_queryset = queryset.filter(
-            name__icontains=value).exclude(name__istartswith=value)
-
-        # Объединение и сортировка результатов
-        combined_queryset = startswith_queryset | contains_queryset
-        combined_queryset = combined_queryset.order_by(
-            *Ingredient._meta.ordering)
-
-        return combined_queryset
+        """
+        Выводит ингредиенты в порядке приоритета сначала по совпадению
+        в начале строки, потом в оставшейся части.
+        """
+        queryset = queryset.annotate(
+            priority=Case(
+                When(name__istartswith=value, then=Value(1)),
+                default=Value(2),
+                output_field=CharField()
+            )
+        )
+        queryset = queryset.filter(name__icontains=value)
+        queryset = queryset.order_by('priority', 'name')
+        return queryset
 
 
 class RecipeFilter(rest_framework.FilterSet):
