@@ -1,5 +1,4 @@
 from django.contrib.auth.models import AbstractUser
-from rest_framework.exceptions import ValidationError
 from django.db import models
 
 from .constants import (
@@ -50,7 +49,7 @@ class User(AbstractUser):
         ordering = ('username',)
 
     def __str__(self):
-        return self.username[:LENGTH_USERNAME]
+        return self.username
 
     def check_subscription(self, author):
         """Подписан ли текущий пользователь на указанного автора."""
@@ -81,7 +80,11 @@ class Follow(models.Model):
         verbose_name="Автор"
     )
 
+    def __str__(self):
+        return f'{self.follower}: {self.author}'
+
     class Meta:
+        verbose_name_plural = 'Подписчики'
         constraints = (
             models.UniqueConstraint(
                 fields=('follower', 'author'),

@@ -21,7 +21,9 @@ from .constants import (
     AMOUNT_INGREDIENTS,
     EMTY_TAGS,
     IS_FAVORITED_PARAM_NAME,
-    IS_SHOPPING_CART_PARAM_NAME
+    IS_SHOPPING_CART_PARAM_NAME,
+    INGREDIENTS_VALIDATE,
+    TAGS_VALIDATE
 )
 
 
@@ -146,10 +148,6 @@ class RecipesReadSerializer(serializers.ModelSerializer):
     author = UserSerializerDjoser(read_only=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    # is_favorited = serializers.SerializerMethodField(
-    #     method_name='general_method')
-    # is_in_shopping_cart = serializers.SerializerMethodField(
-    #     method_name='general_method')
 
     class Meta:
         model = Recipe
@@ -182,18 +180,6 @@ class RecipesReadSerializer(serializers.ModelSerializer):
     def get_is_in_shopping_cart(self, recipe):
         return self._general_method(
             recipe, param_name=IS_SHOPPING_CART_PARAM_NAME)
-
-    # def get_is_favorited(self, recipe):
-    #     user = self.context['request'].user
-    #     if user.is_anonymous:
-    #         return False
-    #     return Favorite.objects.filter(recipe=recipe, user=user).exists()
-
-    # def get_is_in_shopping_cart(self, recipe):
-    #     user = self.context['request'].user
-    #     if user.is_anonymous:
-    #         return False
-    #     return ShoppingCart.objects.filter(recipe=recipe, user=user).exists()
 
 
 class RecipesWriteSerializer(serializers.ModelSerializer):
@@ -253,9 +239,9 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         if 'ingredients' not in validated_data:
-            raise serializers.ValidationError()
+            raise serializers.ValidationError(INGREDIENTS_VALIDATE)
         if 'tags' not in validated_data:
-            raise serializers.ValidationError()
+            raise serializers.ValidationError(TAGS_VALIDATE)
         ingredients = validated_data.pop('ingredients')
         instance.recipeingredient_set.all().delete()
         self._set_recipe_ingredient(

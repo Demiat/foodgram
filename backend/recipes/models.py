@@ -1,4 +1,5 @@
 import uuid
+from typing import List
 
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -14,13 +15,23 @@ from .constants import (
 from users.models import User
 
 
-class Tag(models.Model):
-    """Тэги рецептов."""
+class RecipesBaseModel(models.Model):
 
     name = models.CharField(
         verbose_name='Название',
         max_length=MAX_LENGTH_NAME
     )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        abstract = True
+
+
+class Tag(RecipesBaseModel):
+    """Тэги рецептов."""
+
     slug = models.SlugField(
         verbose_name='Slug-идентификатор',
         max_length=MAX_LENGTH_SLUG,
@@ -33,13 +44,9 @@ class Tag(models.Model):
         ordering = ('name',)
 
 
-class Ingredient(models.Model):
+class Ingredient(RecipesBaseModel):
     """Ингредиенты для рецептов."""
 
-    name = models.CharField(
-        verbose_name='Ингредиент',
-        max_length=MAX_LENGTH_NAME
-    )
     measurement_unit = models.CharField(
         verbose_name='Ед. измерения',
         max_length=MAX_LENGTH_INGRED,
@@ -51,7 +58,7 @@ class Ingredient(models.Model):
         ordering = ('name',)
 
 
-class Recipe(models.Model):
+class Recipe(RecipesBaseModel):
     """Карточка рецепта."""
 
     tags = models.ManyToManyField(
@@ -67,10 +74,6 @@ class Recipe(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='recipes'
-    )
-    name = models.CharField(
-        verbose_name='Рецепт',
-        max_length=MAX_LENGTH_NAME,
     )
     text = models.TextField(
         verbose_name='Описание рецепта',
@@ -96,9 +99,6 @@ class Recipe(models.Model):
     )
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
 
-    def __str__(self):
-        return self.name
-
     def save(self, *args, **kwargs):
         """Создает и сохраняет уникальный код для короткой ссылки на рецепт."""
         if not self.short_code:
@@ -108,6 +108,8 @@ class Recipe(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
+        verbose_name = 'Рецепт'
+        verbose_name_plural = 'Рецепты'
         ordering = ('-pub_date',)
 
 
@@ -124,41 +126,54 @@ class RecipeIngredient(models.Model):
     )
     amount = models.PositiveSmallIntegerField(verbose_name="Количество")
 
+    def __str__(self):
+        return f'{self.recipe}: {self.ingredient}'
 
-class FavoriteShoppingCartAbstractModel(models.Model):
+    class Meta:
+        verbose_name = 'Рецепт с количеством ингредиента'
+        verbose_name_plural = 'Рецепты с количеством ингредиентов'
+
+
+class FavoriteShoppingBaseModel(models.Model):
+    """Базовый абстрактный класс для избранного и списка покупок рецептов."""
 
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE
     )
     recipe = models.ForeignKey(
-        Recipe,
+        'Recipe',
         on_delete=models.CASCADE
     )
 
+    def __str__(self):
+        return f'{self.user}: {self.recipe}'
+
+    @classmethod
+    def _get_unique_constraint(self, constraint_name):
+        return models.UniqueConstraint(
+            fields=('user', 'recipe'), name=constraint_name)
+
     class Meta:
         abstract = True
+        constraints: List[models.UniqueConstraint] = []
 
 
-class Favorite(FavoriteShoppingCartAbstractModel):
+class Favorite(FavoriteShoppingBaseModel):
+    """Избранные рецепты."""
 
-    class Meta(FavoriteShoppingCartAbstractModel.Meta):
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_favorite'
-            ),
-        )
-        verbose_name = 'Избранное'
+    class Meta(FavoriteShoppingBaseModel.Meta):
+        constraints = [
+            FavoriteShoppingBaseModel._get_unique_constraint('favorite_unique')
+        ]
+        verbose_name_plural = 'Избранное'
 
 
-class ShoppingCart(FavoriteShoppingCartAbstractModel):
+class ShoppingCart(FavoriteShoppingBaseModel):
+    """Список покупок для рецептов."""
 
-    class Meta(FavoriteShoppingCartAbstractModel.Meta):
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_shopping_cart'
-            ),
-        )
-        verbose_name = 'Список покупок'
+    class Meta(FavoriteShoppingBaseModel.Meta):
+        constraints = [
+            FavoriteShoppingBaseModel._get_unique_constraint('shopping_unique')
+        ]
+        verbose_name_plural = 'Список покупок'

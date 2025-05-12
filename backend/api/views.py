@@ -236,7 +236,7 @@ class RecipesViewSet(ModelViewSet):
             ).data
         )
 
-    def _general_methods(self, request, *args, param_name=None, **kwargs):
+    def _general_methods(self, request, param_name, *args, **kwargs):
         """Добавляет рецепт в избранное или список покупок."""
         recipe = get_object_or_404(Recipe, pk=kwargs['pk'])
         if param_name == IS_SHOPPING_CART_PARAM_NAME:
