@@ -23,7 +23,7 @@ class RecipesBaseModel(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return self.name[:50]
 
     class Meta:
         abstract = True
@@ -88,7 +88,7 @@ class Recipe(RecipesBaseModel):
     )
     image = models.ImageField(
         'Изображение рецепта',
-        upload_to='recipes/images/',
+        upload_to='recipes/',
     )
     short_code = models.CharField(
         'short-link рецепта',

@@ -1,0 +1,46 @@
+volumes:
+  pg_data_foodgram:
+  static_foodgram:
+  media_foodgram:
+
+services:
+  db:
+    image: postgres:13.10
+    env_file: .env
+    volumes:
+      - pg_data_foodgram:/var/lib/postgresql/data
+  backend:
+    build: ./backend/
+    image: demiat/foodgram_backend
+    env_file: .env
+    command: bash -c "
+      python manage.py collectstatic --noinput &&
+      cp -r /app/collected_static/. /backend_static/static/ &&
+      python manage.py makemigrations &&
+      python manage.py migrate &&
+      python manage.py load_ingredients /app/data/ingredients.csv &&
+      gunicorn --bind 0.0.0.0:8000 food_back.wsgi
+      "
+    depends_on:
+      - db
+    volumes:
+      - static_foodgram:/backend_static
+      - media_foodgram:/var/www/foodgram/media/
+  frontend:
+    build: ./frontend/
+    image: demiat/foodgram_frontend
+    env_file: .env
+    command: cp -r /app/build/. /static/
+    volumes:
+      - static_foodgram:/static
+  gateway:
+    build: ./nginx/
+    image: demiat/foodgram_gateway
+    env_file: .env
+    ports:
+      - 8000:80
+    volumes:
+      - static_foodgram:/staticfiles/
+      - media_foodgram:/var/www/foodgram/media/
+    depends_on:
+      - backend

@@ -11,12 +11,22 @@ class Command(BaseCommand):
 
     help = 'Загружает ингредиенты из CSV файла в модель Ingredient'
 
+    def add_arguments(self, parser):
+        """Добавляет аргументы для команды."""
+        parser.add_argument(
+            'path_to_csv_file',
+            type=str,
+            help='Путь к фалу CSV'
+        )
+
     def handle(self, *args, **options):
+        """Загружает или обновляет ингредиенты из CSV-файла."""
+
+        path_to_csv_file = options['path_to_csv_file']
+
         create_count = 0
         update_count = 0
-        BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
-        FILE_PATH = os.path.join(BASE_DIR, 'data', 'ingredients.csv')
-        with open(FILE_PATH, mode='r', encoding='utf-8') as file:
+        with open(path_to_csv_file, mode='r', encoding='utf-8') as file:
             reader = csv.reader(file)
 
             for row in reader:

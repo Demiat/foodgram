@@ -36,7 +36,7 @@ class RecipeFilter(rest_framework.FilterSet):
 
     author = filters.CharFilter(field_name='author')
     tags = ModelMultipleChoiceFilter(
-        field_name='tags__name',
+        field_name='tags__slug',
         to_field_name='slug',
         queryset=Tag.objects.all()
     )
