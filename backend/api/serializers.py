@@ -1,30 +1,17 @@
 import base64
 
-from djoser.serializers import UserCreateSerializer, UserSerializer
 from django.core.files.base import ContentFile
+from djoser.serializers import UserCreateSerializer, UserSerializer
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
 from rest_framework import serializers
-
 from users.models import User
-from recipes.models import (
-    Tag,
-    Ingredient,
-    Recipe,
-    RecipeIngredient,
-    Favorite,
-    ShoppingCart,
-)
 from users.validators import username_regex_validator
-from .constants import (
-    REPETITIVE_INGREDIENTS,
-    REPETITIVE_TAGS,
-    EMTY_INGREDIENTS,
-    AMOUNT_INGREDIENTS,
-    EMTY_TAGS,
-    IS_FAVORITED_PARAM_NAME,
-    IS_SHOPPING_CART_PARAM_NAME,
-    INGREDIENTS_VALIDATE,
-    TAGS_VALIDATE
-)
+
+from .constants import (AMOUNT_INGREDIENTS, EMTY_INGREDIENTS, EMTY_TAGS,
+                        INGREDIENTS_VALIDATE, IS_FAVORITED_PARAM_NAME,
+                        IS_SHOPPING_CART_PARAM_NAME, REPETITIVE_INGREDIENTS,
+                        REPETITIVE_TAGS, TAGS_VALIDATE)
 
 
 class UserSerializerDjoser(UserSerializer):

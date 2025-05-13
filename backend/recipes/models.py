@@ -1,18 +1,12 @@
 import uuid
 from typing import List
 
-from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
-
-from .constants import (
-    MAX_LENGTH_NAME,
-    MAX_LENGTH_SLUG,
-    MAX_LENGTH_INGRED,
-    MAX_LENGTH_TEXT,
-    MAX_COOKING_TIME,
-    MAX_LENGTH_LINK
-)
+from django.db import models
 from users.models import User
+
+from .constants import (MAX_COOKING_TIME, MAX_LENGTH_INGRED, MAX_LENGTH_LINK,
+                        MAX_LENGTH_NAME, MAX_LENGTH_SLUG, MAX_LENGTH_TEXT)
 
 
 class RecipesBaseModel(models.Model):

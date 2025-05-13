@@ -1,47 +1,32 @@
 import csv
 
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.permissions import SAFE_METHODS
-from rest_framework.exceptions import ValidationError
-from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
-from django.shortcuts import redirect
-from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch, Sum
-from django.conf import settings
-from djoser.serializers import SetPasswordSerializer
 from django.http import HttpResponse
-
-from users.models import User, Follow
-from recipes.models import (
-    Recipe, Ingredient, Tag, Favorite, ShoppingCart, RecipeIngredient
-)
-from .filters import IngredientFilter, RecipeFilter
-from .serializers import (
-    UserCreateSerializerDjoser,
-    UserSerializerDjoser,
-    AvatarSetSerializer,
-    IngredientSerializer,
-    TagSerializer,
-    RecipesWriteSerializer,
-    RecipesReadSerializer,
-    ShortLinkSerializer,
-    SubscriptionSerializer,
-    LimitedRecipesReadSerializer,
-
-)
+from django.shortcuts import get_object_or_404, redirect
+from django_filters.rest_framework import DjangoFilterBackend
+from djoser.serializers import SetPasswordSerializer
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+from users.models import Follow, User
 from users.permissions import IsAuthorOrAdminOnly
-from .constants import (
-    FOLLOWING_ERROR,
-    SELF_FOLLOWING,
-    IS_FAVORITED_PARAM_NAME,
-    IS_SHOPPING_CART_PARAM_NAME
-)
+
+from .constants import (FOLLOWING_ERROR, IS_FAVORITED_PARAM_NAME,
+                        IS_SHOPPING_CART_PARAM_NAME, SELF_FOLLOWING)
+from .filters import IngredientFilter, RecipeFilter
+from .serializers import (AvatarSetSerializer, IngredientSerializer,
+                          LimitedRecipesReadSerializer, RecipesReadSerializer,
+                          RecipesWriteSerializer, ShortLinkSerializer,
+                          SubscriptionSerializer, TagSerializer,
+                          UserCreateSerializerDjoser, UserSerializerDjoser)
 
 
 def get_short_link_recipe(request, short_code):
