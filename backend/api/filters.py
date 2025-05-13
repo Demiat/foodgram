@@ -1,8 +1,19 @@
-from django_filters import rest_framework, ModelMultipleChoiceFilter, filters
-from django.db.models import Exists, OuterRef, Case, When, Value, CharField
+from django_filters import (
+    ModelMultipleChoiceFilter,
+    filters,
+    rest_framework,
+)
+from django.db.models import (
+    Case,
+    CharField,
+    Exists,
+    OuterRef,
+    Value,
+    When,
+)
 
-from recipes.models import Ingredient, Recipe, Tag, ShoppingCart, Favorite
 from .constants import IS_FAVORITED_PARAM_NAME, IS_SHOPPING_CART_PARAM_NAME
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 
 
 class IngredientFilter(rest_framework.FilterSet):
