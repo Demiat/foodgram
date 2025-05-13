@@ -1,11 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from .constants import (
-    MAX_LENGTH_EMAIL,
-    LENGTH_USERNAME,
-    USERNAME_REGEX_TEXT,
-)
+from .constants import LENGTH_USERNAME, MAX_LENGTH_EMAIL, USERNAME_REGEX_TEXT
 from .validators import username_regex_validator
 
 

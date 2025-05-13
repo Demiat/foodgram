@@ -1,5 +1,6 @@
 from django.db.models import Case, CharField, Exists, OuterRef, Value, When
 from django_filters import ModelMultipleChoiceFilter, filters, rest_framework
+
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 
 from .constants import IS_FAVORITED_PARAM_NAME, IS_SHOPPING_CART_PARAM_NAME

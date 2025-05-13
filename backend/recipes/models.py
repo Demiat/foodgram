@@ -3,6 +3,7 @@ from typing import List
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
 from users.models import User
 
 from .constants import (MAX_COOKING_TIME, MAX_LENGTH_INGRED, MAX_LENGTH_LINK,
