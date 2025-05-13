@@ -1,7 +1,9 @@
 frontend/node_modules
 infra/frontend/build
-.env
 db.sqlite3.bak
+docs/
+static/
+media/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -138,6 +140,3 @@ dmypy.json
 # .idea
 .idea
 .vscode
-
-static/
-media/

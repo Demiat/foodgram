@@ -10,6 +10,7 @@ from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
+from django.shortcuts import redirect
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch, Sum
 from django.conf import settings
@@ -41,6 +42,13 @@ from .constants import (
     IS_FAVORITED_PARAM_NAME,
     IS_SHOPPING_CART_PARAM_NAME
 )
+
+
+def get_short_link_recipe(request, short_code):
+    """Выводит страницу по короткой ссылке."""
+    return redirect(
+        f'/recipes/{get_object_or_404(Recipe, short_code=short_code).id}/'
+    )
 
 
 class UserViewSet(ModelViewSet):
@@ -300,11 +308,12 @@ class RecipesViewSet(ModelViewSet):
                 'ingredient__name', 'ingredient__measurement_unit').annotate(
                 total_amount=Sum('amount'))
 
-        response = HttpResponse(content_type="text/csv")
-        response['Content-Disposition'] = 'attachment; filename="products.csv"'
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
 
         writer = csv.writer(response)  # передаём объект потока вывода
-        writer.writerow(['Ingredients', 'Total Amount', 'Measurement_unit'])
+        writer.writerow(
+            ['Ингредиенты', 'Общее количество', 'Единица измерения']
+        )
 
         for ingredient in ingredients_with_amount:
             writer.writerow(

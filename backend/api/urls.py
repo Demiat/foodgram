@@ -6,7 +6,6 @@ from .views import (
     IngredientsViewSet,
     TagsViewSet,
     UserViewSet,
-    # RecipeDetailView,
 )
 
 api_v1_router = DefaultRouter()
@@ -17,11 +16,6 @@ api_v1_router.register(
     'ingredients', IngredientsViewSet, basename='ingredients')
 
 urlpatterns = [
-    # path(
-    #     's/<uuid:short_code>/',
-    #     RecipeDetailView.as_view(),
-    #     name='recipe_short_link'
-    # ),
     path('', include(api_v1_router.urls)),
     path('auth/', include('djoser.urls.authtoken')),
 ]

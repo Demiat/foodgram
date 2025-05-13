@@ -18,21 +18,23 @@ class IngredientFilter(rest_framework.FilterSet):
         """
         Выводит ингредиенты в порядке приоритета сначала по совпадению
         в начале строки, потом в оставшейся части.
+        C этой целью создает признак (временное поле в базе) приоритета
+        со значением 1 для записей, в которых совпадение в начале строки.
         """
-        queryset = queryset.annotate(
+        return queryset.annotate(
             priority=Case(
                 When(name__istartswith=value, then=Value(1)),
                 default=Value(2),
                 output_field=CharField()
             )
-        )
-        queryset = queryset.filter(name__icontains=value)
-        queryset = queryset.order_by('priority', 'name')
-        return queryset
+        ).filter(name__icontains=value).order_by('priority', 'name')
 
 
 class RecipeFilter(rest_framework.FilterSet):
-    """Фильтр для рецептов с возможностью выбора нескольких тегов и автора."""
+    """
+    Фильтр для рецептов с возможностью выбора нескольких тегов и автора,
+    а также флагов: в избранном, в списке покупок.
+    """
 
     author = filters.CharFilter(field_name='author')
     tags = ModelMultipleChoiceFilter(
@@ -56,6 +58,9 @@ class RecipeFilter(rest_framework.FilterSet):
             manager = ShoppingCart.objects
         elif name == IS_FAVORITED_PARAM_NAME:
             manager = Favorite.objects
+        # Создадим поле-признак существования записей с таким пользователем и
+        # рецептом из модели флага, соответствующим общей модели рецептов.
+        # Отфильтруем записи по этому полю-признаку.
         return queryset.annotate(
             in_shopping_cart=Exists(
                 manager.filter(user=self.request.user, recipe=OuterRef('pk'))

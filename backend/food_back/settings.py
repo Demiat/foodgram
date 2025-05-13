@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
@@ -154,3 +155,13 @@ GET_LINK_POINT = 'get-link'
 FAVORITES_POINT = 'favorite'
 SHOPPING_CART_POINT = 'shopping_cart'
 DOWNLOAD_CART_POINT = 'download_shopping_cart'
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    }
+}
