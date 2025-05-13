@@ -144,8 +144,8 @@ class FavoriteShoppingBaseModel(models.Model):
     def __str__(self):
         return f'{self.user}: {self.recipe}'
 
-    @classmethod
-    def _get_unique_constraint(self, constraint_name):
+    @staticmethod
+    def _get_unique_constraint(constraint_name):
         return models.UniqueConstraint(
             fields=('user', 'recipe'), name=constraint_name)
 

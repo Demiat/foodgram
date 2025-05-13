@@ -26,9 +26,13 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'author')
+    list_display = ('name', 'author', 'favorite_count')
     search_fields = ('name', 'author')
     list_filter = ('tags',)
+
+    @staticmethod
+    def favorite_count(recipe):
+        return recipe.favorite_set.count()
 
 
 @admin.register(ShoppingCart)
