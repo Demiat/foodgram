@@ -292,7 +292,7 @@ class RecipesViewSet(ModelViewSet):
         ingredients_with_amount = RecipeIngredient.objects.filter(
             recipe__in=recipes_ids).values(
                 'ingredient__name', 'ingredient__measurement_unit').annotate(
-                total_amount=Sum('amount'))
+                total_amount=Sum('amount')).order_by('ingredient__name')
 
         response = HttpResponse(content_type='text/csv; charset=utf-8')
 
