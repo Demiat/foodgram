@@ -1,13 +1,101 @@
 import uuid
 from typing import List
 
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import (MaxValueValidator, MinValueValidator,
+                                    RegexValidator)
 from django.db import models
 
-from users.models import User
+from .constants import (LENGTH_USERNAME, MAX_COOKING_TIME, MAX_LENGTH_EMAIL,
+                        MAX_LENGTH_INGRED, MAX_LENGTH_LINK, MAX_LENGTH_NAME,
+                        MAX_LENGTH_SLUG, MAX_LENGTH_TEXT, USERNAME_REGEX,
+                        USERNAME_REGEX_TEXT)
 
-from .constants import (MAX_COOKING_TIME, MAX_LENGTH_INGRED, MAX_LENGTH_LINK,
-                        MAX_LENGTH_NAME, MAX_LENGTH_SLUG, MAX_LENGTH_TEXT)
+
+class User(AbstractUser):
+    """Кастомная модель пользователя с логином по email."""
+
+    email = models.EmailField(
+        max_length=MAX_LENGTH_EMAIL,
+        verbose_name='Электронная почта',
+        unique=True
+    )
+    username = models.CharField(
+        max_length=LENGTH_USERNAME,
+        verbose_name='Ник',
+        unique=True,
+        validators=[
+            RegexValidator(regex=USERNAME_REGEX, message=USERNAME_REGEX_TEXT)
+        ],
+        help_text=USERNAME_REGEX_TEXT
+    )
+    first_name = models.CharField(
+        max_length=LENGTH_USERNAME,
+        verbose_name='Имя',
+    )
+    last_name = models.CharField(
+        max_length=LENGTH_USERNAME,
+        verbose_name='Фамилия',
+    )
+    avatar = models.ImageField(
+        'Изображение',
+        upload_to='users/',
+        blank=True,
+        null=True
+    )
+
+    # Устанавливаем авторизацию по полю email
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+        ordering = ('username',)
+
+    def __str__(self):
+        return self.username
+
+    def check_subscription(self, author):
+        """Подписан ли текущий пользователь на указанного автора."""
+        if isinstance(author, User):
+            return self.followings.filter(author=author).exists()
+
+
+class Follow(models.Model):
+    """
+    Поле follower обозначает пользователя, подписанного на автора.
+    Поле author обозначает пользователя, на которого
+    подписаны другие пользователи.
+
+    ivan.followings.all() - вернёт всех авторов, на которых подписан Иван
+    maria.followers.all() - вернёт всех пользов., которые подписались на Марию
+    """
+
+    follower = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='followings',
+        verbose_name='Подписчик'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='followers',
+        verbose_name='Автор'
+    )
+
+    def __str__(self):
+        return f'{self.follower}: {self.author}'
+
+    class Meta:
+        verbose_name_plural = 'Подписчики'
+        constraints = (
+            models.UniqueConstraint(
+                fields=('follower', 'author'),
+                name='unique_follow'
+            ),
+        )
 
 
 class RecipesBaseModel(models.Model):
@@ -28,7 +116,7 @@ class Tag(RecipesBaseModel):
     """Тэги рецептов."""
 
     slug = models.SlugField(
-        verbose_name='Slug-идентификатор',
+        verbose_name='Идентификатор',
         max_length=MAX_LENGTH_SLUG,
         unique=True
     )
@@ -40,16 +128,16 @@ class Tag(RecipesBaseModel):
 
 
 class Ingredient(RecipesBaseModel):
-    """Ингредиенты для рецептов."""
+    """Продукты для рецептов."""
 
     measurement_unit = models.CharField(
-        verbose_name='Ед. измерения',
+        verbose_name='Мера',
         max_length=MAX_LENGTH_INGRED,
     )
 
     class Meta:
-        verbose_name = 'Ингридиент'
-        verbose_name_plural = 'Ингридиенты'
+        verbose_name = 'Продукт'
+        verbose_name_plural = 'Продукты'
         ordering = ('name',)
 
 
@@ -109,7 +197,7 @@ class Recipe(RecipesBaseModel):
 
 
 class RecipeIngredient(models.Model):
-    """Связующая модель рецептов и ингредиентов с количеством."""
+    """Связующая модель рецептов и продуктов с количеством."""
 
     recipe = models.ForeignKey(
         Recipe,
@@ -119,14 +207,14 @@ class RecipeIngredient(models.Model):
         Ingredient,
         on_delete=models.CASCADE
     )
-    amount = models.PositiveSmallIntegerField(verbose_name="Количество")
+    amount = models.PositiveSmallIntegerField(verbose_name='Количество')
 
     def __str__(self):
         return f'{self.recipe}: {self.ingredient}'
 
     class Meta:
-        verbose_name = 'Рецепт с количеством ингредиента'
-        verbose_name_plural = 'Рецепты с количеством ингредиентов'
+        verbose_name = 'Рецепт с количеством продукта'
+        verbose_name_plural = 'Рецепты с количеством продуктов'
 
 
 class FavoriteShoppingBaseModel(models.Model):

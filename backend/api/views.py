@@ -180,7 +180,7 @@ class TagsViewSet(ModelViewSet):
 
 
 class IngredientsViewSet(ModelViewSet):
-    """Контроллер ингредиентов, GET."""
+    """Контроллер продуктов, GET."""
 
     queryset = Ingredient.objects.all()
     permission_classes = (AllowAny,)
@@ -298,7 +298,7 @@ class RecipesViewSet(ModelViewSet):
 
         writer = csv.writer(response)  # передаём объект потока вывода
         writer.writerow(
-            ['Ингредиенты', 'Общее количество', 'Единица измерения']
+            ['продукты', 'Общее количество', 'Единица измерения']
         )
 
         for ingredient in ingredients_with_amount:

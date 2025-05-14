@@ -5,9 +5,7 @@ from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Tag)
-from users.models import User
-from users.validators import username_regex_validator
+                            ShoppingCart, Tag, User)
 
 from .constants import (AMOUNT_INGREDIENTS, EMTY_INGREDIENTS, EMTY_TAGS,
                         INGREDIENTS_VALIDATE, IS_FAVORITED_PARAM_NAME,
@@ -55,10 +53,6 @@ class UserCreateSerializerDjoser(UserCreateSerializer):
         )
         read_only_fields = ('id',)
 
-    def validate_username(self, username):
-        username_regex_validator(username)
-        return username
-
 
 class Base64ImageField(serializers.ImageField):
     """Переводит base64 данные во внутреннее представление Джанго."""
@@ -101,7 +95,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class IngredientSerializer(serializers.ModelSerializer):
-    """Ингредиенты."""
+    """Продукты."""
 
     class Meta:
         model = Ingredient
@@ -109,7 +103,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
-    """Рецепты с ингредиентами и кол-вом."""
+    """Рецепты с продуктами и мерой."""
 
     id = serializers.PrimaryKeyRelatedField(
         queryset=Ingredient.objects.all(), source='ingredient'
@@ -121,7 +115,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ingredient_serialized = IngredientSerializer(instance.ingredient).data
-        # Добавляем количество на один уровень с полями ингредиента
+        # Добавляем количество на один уровень с полями продукта
         representation = {**ingredient_serialized, 'amount': instance.amount}
         return representation
 

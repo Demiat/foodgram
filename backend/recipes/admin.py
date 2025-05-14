@@ -1,10 +1,18 @@
 from django.contrib import admin
 
-from .models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                     ShoppingCart, Tag)
+from .models import (Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
+                     ShoppingCart, Tag, User)
 
 admin.site.empty_value_display = '-пусто-'
 
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    search_fields = ('email', 'username')
+
+
+@admin.register(Follow)
+class FollowAdmin(admin.ModelAdmin):
+    pass
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):

@@ -26,9 +26,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
-    'users.apps.UsersConfig',
-    'api.apps.ApiConfig',
     'recipes.apps.RecipesConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -140,10 +139,7 @@ REST_FRAMEWORK = {
 
 }
 
-AUTH_USER_MODEL = 'users.User'
-AUTHENTICATION_BACKENDS = (
-    'users.email_auth_backend.EmailAuthBackend',
-)
+AUTH_USER_MODEL = 'recipes.User'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

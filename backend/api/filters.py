@@ -7,7 +7,7 @@ from .constants import IS_FAVORITED_PARAM_NAME, IS_SHOPPING_CART_PARAM_NAME
 
 
 class IngredientFilter(rest_framework.FilterSet):
-    """Поиск по частичному вхождению в начале названия ингредиента."""
+    """Поиск по частичному вхождению в начале названия продукта."""
 
     name = filters.CharFilter(method='combined_search')
 
@@ -17,7 +17,7 @@ class IngredientFilter(rest_framework.FilterSet):
 
     def combined_search(self, queryset, name, value):
         """
-        Выводит ингредиенты в порядке приоритета сначала по совпадению
+        Выводит продукты в порядке приоритета сначала по совпадению
         в начале строки, потом в оставшейся части.
         C этой целью создает признак (временное поле в базе) приоритета
         со значением 1 для записей, в которых совпадение в начале строки.
