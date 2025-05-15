@@ -16,9 +16,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Tag)
-from users.models import Follow, User
-from users.permissions import IsAuthorOrAdminOnly
+                            ShoppingCart, Tag, Follow, User)
+from api.permissions import IsAuthorOrAdminOnly
 
 from .constants import (FOLLOWING_ERROR, IS_FAVORITED_PARAM_NAME,
                         IS_SHOPPING_CART_PARAM_NAME, SELF_FOLLOWING)
