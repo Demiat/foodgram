@@ -118,7 +118,7 @@ class UserViewSet(ModelViewSet):
         context = {'request': request, **self._get_limit(request)}
         # Получаем список пользователей, на которых подписаны
         followed_users = self.request.user.followings.values_list(
-            'author', flat=True)
+            'to_user', flat=True)
         # Подготовим список рецептов с сортировкой
         recipe_prefetch = Prefetch(
             'recipes', queryset=Recipe.objects.order_by(
@@ -147,8 +147,8 @@ class UserViewSet(ModelViewSet):
                 raise ValidationError(SELF_FOLLOWING)
             try:
                 Follow.objects.create(
-                    follower=request.user,
-                    author=author
+                    from_user=request.user,
+                    to_user=author
                 )
             except IntegrityError:
                 raise ValidationError(FOLLOWING_ERROR)
@@ -162,7 +162,7 @@ class UserViewSet(ModelViewSet):
         elif request.method == 'DELETE':
             try:
                 Follow.objects.get(
-                    follower=request.user, author=author).delete()
+                    from_user=request.user, to_user=author).delete()
             except ObjectDoesNotExist:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
             return Response(status=status.HTTP_204_NO_CONTENT)

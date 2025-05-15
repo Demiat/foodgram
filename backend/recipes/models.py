@@ -2,13 +2,14 @@ import uuid
 from typing import List
 
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import (MaxValueValidator, MinValueValidator,
+from django.core.validators import (MinValueValidator,
                                     RegexValidator)
 from django.db import models
 
-from .constants import (LENGTH_USERNAME, MAX_COOKING_TIME, MAX_LENGTH_EMAIL,
-                        MAX_LENGTH_INGRED, MAX_LENGTH_LINK, MAX_LENGTH_NAME,
-                        MAX_LENGTH_SLUG, MAX_LENGTH_TEXT, USERNAME_REGEX,
+from .constants import (LENGTH_USERNAME, MAX_LENGTH_EMAIL,
+                        MAX_LENGTH_INGRED, MAX_LENGTH_NAME,
+                        MAX_LENGTH_TAG_SLUG, MAX_LENGTH_TAG_NAME,
+                        USERNAME_REGEX, MAX_LENGTH_MEASUREMENT,
                         USERNAME_REGEX_TEXT)
 
 
@@ -59,65 +60,57 @@ class User(AbstractUser):
     def check_subscription(self, author):
         """Подписан ли текущий пользователь на указанного автора."""
         if isinstance(author, User):
-            return self.followings.filter(author=author).exists()
+            return self.followings.filter(to_user=author).exists()
 
 
 class Follow(models.Model):
     """
-    Поле follower обозначает пользователя, подписанного на автора.
-    Поле author обозначает пользователя, на которого
-    подписаны другие пользователи.
+    Модель описывает связь между пользователями, где один пользователь
+    подписан на другого.
 
-    ivan.followings.all() - вернёт всех авторов, на которых подписан Иван
-    maria.followers.all() - вернёт всех пользов., которые подписались на Марию
+    Поля:
+    - from_user: Пользователь, который подписался (инициатор подписки).
+    - to_user: Пользователь, на которого подписываются (получатель подписки).
     """
 
-    follower = models.ForeignKey(
+    from_user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='followings',
-        verbose_name='Подписчик'
+        verbose_name='Кто подписался'
     )
-    author = models.ForeignKey(
+    to_user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='followers',
-        verbose_name='Автор'
+        verbose_name='На кого подписались'
     )
 
     def __str__(self):
-        return f'{self.follower}: {self.author}'
+        return f'{self.from_user}: {self.to_user}'
 
     class Meta:
+        verbose_name = 'Подписчик'
         verbose_name_plural = 'Подписчики'
         constraints = (
             models.UniqueConstraint(
-                fields=('follower', 'author'),
-                name='unique_follow'
+                fields=('from_user', 'to_user'),
+                name='unique_followers'
             ),
         )
 
 
-class RecipesBaseModel(models.Model):
+class Tag(models.Model):
+    """Тэги рецептов."""
 
     name = models.CharField(
         verbose_name='Название',
-        max_length=MAX_LENGTH_NAME
+        max_length=MAX_LENGTH_TAG_NAME
     )
-
-    def __str__(self):
-        return self.name[:50]
-
-    class Meta:
-        abstract = True
-
-
-class Tag(RecipesBaseModel):
-    """Тэги рецептов."""
 
     slug = models.SlugField(
         verbose_name='Идентификатор',
-        max_length=MAX_LENGTH_SLUG,
+        max_length=MAX_LENGTH_TAG_SLUG,
         unique=True
     )
 
@@ -126,13 +119,21 @@ class Tag(RecipesBaseModel):
         verbose_name_plural = 'Тэги'
         ordering = ('name',)
 
+    def __str__(self):
+        return self.name
 
-class Ingredient(RecipesBaseModel):
+
+class Ingredient(models.Model):
     """Продукты для рецептов."""
 
+    name = models.CharField(
+        verbose_name='Название',
+        max_length=MAX_LENGTH_INGRED
+    )
+
     measurement_unit = models.CharField(
-        verbose_name='Мера',
-        max_length=MAX_LENGTH_INGRED,
+        verbose_name='Ед.измерения',
+        max_length=MAX_LENGTH_MEASUREMENT,
     )
 
     class Meta:
@@ -140,9 +141,17 @@ class Ingredient(RecipesBaseModel):
         verbose_name_plural = 'Продукты'
         ordering = ('name',)
 
+    def __str__(self):
+        return self.name[:50]
 
-class Recipe(RecipesBaseModel):
+
+class Recipe(models.Model):
     """Карточка рецепта."""
+
+    name = models.CharField(
+        verbose_name='Название',
+        max_length=MAX_LENGTH_NAME
+    )
 
     tags = models.ManyToManyField(
         Tag,
@@ -160,13 +169,11 @@ class Recipe(RecipesBaseModel):
     )
     text = models.TextField(
         verbose_name='Описание рецепта',
-        max_length=MAX_LENGTH_TEXT
     )
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления (мин.)',
         validators=[
             MinValueValidator(1),
-            MaxValueValidator(MAX_COOKING_TIME)
         ]
     )
     image = models.ImageField(
@@ -175,7 +182,7 @@ class Recipe(RecipesBaseModel):
     )
     short_code = models.CharField(
         'short-link рецепта',
-        max_length=MAX_LENGTH_LINK,
+        max_length=MAX_LENGTH_NAME,
         default=None,
         null=True,
         unique=True
@@ -185,9 +192,9 @@ class Recipe(RecipesBaseModel):
     def save(self, *args, **kwargs):
         """Создает и сохраняет уникальный код для короткой ссылки на рецепт."""
         if not self.short_code:
-            self.short_code = uuid.uuid4().hex[:MAX_LENGTH_LINK]
+            self.short_code = uuid.uuid4().hex
             while Recipe.objects.filter(short_code=self.short_code).exists():
-                self.short_code = uuid.uuid4().hex[:MAX_LENGTH_LINK]
+                self.short_code = uuid.uuid4().hex
         super().save(*args, **kwargs)
 
     class Meta:
@@ -195,9 +202,12 @@ class Recipe(RecipesBaseModel):
         verbose_name_plural = 'Рецепты'
         ordering = ('-pub_date',)
 
+    def __str__(self):
+        return self.name[:50]
+
 
 class RecipeIngredient(models.Model):
-    """Связующая модель рецептов и продуктов с количеством."""
+    """Связующая модель рецептов и продуктов с мерой."""
 
     recipe = models.ForeignKey(
         Recipe,
@@ -207,14 +217,14 @@ class RecipeIngredient(models.Model):
         Ingredient,
         on_delete=models.CASCADE
     )
-    amount = models.PositiveSmallIntegerField(verbose_name='Количество')
+    amount = models.PositiveSmallIntegerField(verbose_name='Мера')
 
     def __str__(self):
         return f'{self.recipe}: {self.ingredient}'
 
     class Meta:
-        verbose_name = 'Рецепт с количеством продукта'
-        verbose_name_plural = 'Рецепты с количеством продуктов'
+        verbose_name = 'Рецепт с мерой продукта'
+        verbose_name_plural = 'Рецепты с мерой продуктов'
 
 
 class FavoriteShoppingBaseModel(models.Model):
