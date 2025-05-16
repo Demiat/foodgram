@@ -7,16 +7,14 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from api.views import get_short_link_recipe
-
 schema_view = get_schema_view(
     openapi.Info(
-        title="Foodgram API",
+        title='Foodgram API',
         default_version='v1',
-        description="Документация API сайта Foodgram",
+        description='Документация API сайта Foodgram',
         # terms_of_service="URL страницы с пользовательским соглашением",
-        contact=openapi.Contact(email="demiat@mail.ru"),
-        license=openapi.License(name="BSD License"),
+        contact=openapi.Contact(email='demiat@mail.ru'),
+        license=openapi.License(name='BSD License'),
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
@@ -24,11 +22,7 @@ schema_view = get_schema_view(
 
 
 urlpatterns = [
-    path(
-        's/<str:short_code>/',
-        get_short_link_recipe,
-        name='recipe_short_link'
-    ),
+    path('s/', include('recipes.urls')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
 ]

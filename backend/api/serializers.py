@@ -236,20 +236,6 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         return RecipesReadSerializer(recipe, context=self.context).data
 
 
-class ShortLinkSerializer(serializers.ModelSerializer):
-    """Выводит короткую уникальную ссылку для рецепта."""
-
-    def to_representation(self, instance):
-        request = self.context['request']
-        base_url = request.build_absolute_uri('/')
-        full_short_link = f'{base_url}s/{instance.short_code}'
-        return {'short-link': full_short_link}
-
-    class Meta:
-        model = Recipe
-        fields = ('short_code',)
-
-
 class LimitedRecipesReadSerializer(serializers.ModelSerializer):
 
     class Meta:

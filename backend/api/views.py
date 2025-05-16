@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import Prefetch, Sum
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.serializers import SetPasswordSerializer
 from rest_framework import status
@@ -24,16 +24,9 @@ from .constants import (FOLLOWING_ERROR, IS_FAVORITED_PARAM_NAME,
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (AvatarSetSerializer, IngredientSerializer,
                           LimitedRecipesReadSerializer, RecipesReadSerializer,
-                          RecipesWriteSerializer, ShortLinkSerializer,
+                          RecipesWriteSerializer,
                           SubscriptionSerializer, TagSerializer,
                           UserCreateSerializerDjoser, UserSerializerDjoser)
-
-
-def get_short_link_recipe(request, short_code):
-    """Выводит страницу по короткой ссылке."""
-    return redirect(
-        f'/recipes/{get_object_or_404(Recipe, short_code=short_code).id}/'
-    )
 
 
 class UserViewSet(ModelViewSet):
@@ -222,12 +215,12 @@ class RecipesViewSet(ModelViewSet):
         permission_classes=(AllowAny,)
     )
     def get_short_link(self, request, *args, **kwargs):
-        return Response(
-            ShortLinkSerializer(
-                instance=get_object_or_404(Recipe, pk=kwargs['pk']),
-                context={'request': request}
-            ).data
-        )
+        return Response({
+            'short-link': (
+                f'{request.build_absolute_uri("/")}s/'
+                f'{get_object_or_404(Recipe, pk=kwargs["pk"]).id}'
+            )
+        })
 
     def _general_methods(self, request, param_name, *args, **kwargs):
         """Добавляет рецепт в избранное или список покупок."""
