@@ -151,6 +151,7 @@ GET_LINK_POINT = 'get-link'
 FAVORITES_POINT = 'favorite'
 SHOPPING_CART_POINT = 'shopping_cart'
 DOWNLOAD_CART_POINT = 'download_shopping_cart'
+SHORT_URL_PREFIX = 's/'
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -160,4 +161,14 @@ SWAGGER_SETTINGS = {
             'in': 'header'
         }
     }
+}
+
+DJOSER = {
+    'HIDE_USERS': False,
+    'PERMISSIONS': {
+        'user_list': ['rest_framework.permissions.AllowAny'],
+    },
+    'SERIALIZERS': {
+        'current_user': 'api.serializers.UserSerializerDjoser',
+    },
 }

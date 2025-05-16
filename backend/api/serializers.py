@@ -32,10 +32,12 @@ class UserSerializerDjoser(UserSerializer):
         )
 
     def get_is_subscribed(self, author):
-        follower = self.context['request'].user
-        if follower.is_anonymous:
+        from_user = self.context['request'].user
+        if from_user.is_anonymous:
             return False
-        return follower.check_subscription(author)
+        if isinstance(author, User):
+            return from_user.followings.filter(
+                to_user=author).exists()
 
 
 class UserCreateSerializerDjoser(UserCreateSerializer):
@@ -125,7 +127,7 @@ class RecipesReadSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     tags = TagSerializer(many=True, read_only=True)
     ingredients = RecipeIngredientSerializer(
-        many=True, read_only=True, source='recipeingredient_set'
+        many=True, read_only=True, source='recipeingredients'
     )
     author = UserSerializerDjoser(read_only=True)
     is_favorited = serializers.SerializerMethodField()
@@ -180,10 +182,6 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             'cooking_time',
             'image',
         )
-        extra_kwargs = {
-            'cooking_time': {'min_value': 1, 'max_value': 240},
-            'text': {'trim_whitespace': True},
-        }
 
     def validate_tags(self, tags):
         if not tags:
@@ -269,8 +267,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             authors.recipes.all()[:limit], many=True).data
 
     def get_is_subscribed(self, author):
-        follower = self.context['request'].user
-        return follower.check_subscription(author)
+        if isinstance(author, User):
+            return self.context['request'].user.followings.filter(
+                to_user=author).exists()
 
     def get_recipes_count(self, author):
         return author.recipes.count()

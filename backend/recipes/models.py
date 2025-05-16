@@ -54,11 +54,6 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
-    def check_subscription(self, author):
-        """Подписан ли текущий пользователь на указанного автора."""
-        if isinstance(author, User):
-            return self.followings.filter(to_user=author).exists()
-
 
 class Follow(models.Model):
     """

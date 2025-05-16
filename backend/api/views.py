@@ -7,7 +7,7 @@ from django.db.models import Prefetch, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from djoser.serializers import SetPasswordSerializer
+from djoser.views import UserViewSet as UserViewSetDjoser
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -29,17 +29,13 @@ from .serializers import (AvatarSetSerializer, IngredientSerializer,
                           UserCreateSerializerDjoser, UserSerializerDjoser)
 
 
-class UserViewSet(ModelViewSet):
+class UserViewSet(UserViewSetDjoser):
     """Работает с моделью пользователей."""
 
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
+    serializer_class = UserSerializerDjoser
     http_method_names = ('get', 'post', 'put', 'delete')
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return UserCreateSerializerDjoser
-        return UserSerializerDjoser
 
     @action(
         detail=False,
@@ -56,21 +52,21 @@ class UserViewSet(ModelViewSet):
             status=status.HTTP_200_OK
         )
 
-    @action(
-        detail=False,
-        methods=['POST'],
-        url_path='set_password',
-        permission_classes=(IsAuthenticated,)
-    )
-    def set_password(self, request):
-        """Изменение своего пароля."""
-        serializer = SetPasswordSerializer(
-            data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        user = request.user
-        user.set_password(serializer.validated_data["new_password"])
-        user.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # @action(
+    #     detail=False,
+    #     methods=['POST'],
+    #     url_path='set_password',
+    #     permission_classes=(IsAuthenticated,)
+    # )
+    # def set_password(self, request):
+    #     """Изменение своего пароля."""
+    #     serializer = SetPasswordSerializer(
+    #         data=request.data, context={"request": request})
+    #     serializer.is_valid(raise_exception=True)
+    #     user = request.user
+    #     user.set_password(serializer.validated_data["new_password"])
+    #     user.save()
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
@@ -214,11 +210,11 @@ class RecipesViewSet(ModelViewSet):
         url_path=settings.GET_LINK_POINT,
         permission_classes=(AllowAny,)
     )
-    def get_short_link(self, request, *args, **kwargs):
+    def get_short_link(self, request, pk=None):
         return Response({
             'short-link': (
-                f'{request.build_absolute_uri("/")}s/'
-                f'{get_object_or_404(Recipe, pk=kwargs["pk"]).id}'
+                f'{request.build_absolute_uri("/")}{settings.SHORT_URL_PREFIX}'
+                f'{get_object_or_404(Recipe, pk=pk).id}'
             )
         })
 
