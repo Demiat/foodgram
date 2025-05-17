@@ -40,7 +40,7 @@ class RecipeAdmin(admin.ModelAdmin):
 
     @staticmethod
     def favorite_count(recipe):
-        return recipe.favorite_set.count()
+        return recipe.favorites.count()
 
 
 @admin.register(ShoppingCart)

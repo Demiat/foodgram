@@ -223,7 +223,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         if 'tags' not in validated_data:
             raise serializers.ValidationError(TAGS_VALIDATE)
         ingredients = validated_data.pop('ingredients')
-        instance.recipeingredient_set.all().delete()
+        instance.recipeingredients.all().delete()
         self._set_recipe_ingredient(
             recipe=instance, ingredients=ingredients
         )
@@ -262,9 +262,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
 
     def get_recipes(self, authors):
-        limit = self.context['recipes_limit']
+        try:
+            recipes_limit = int(
+                self.context['request'].GET.get('recipes_limit')
+            )
+        except (ValueError, TypeError):
+            recipes_limit = None
         return LimitedRecipesReadSerializer(
-            authors.recipes.all()[:limit], many=True).data
+            authors.recipes.all()[:recipes_limit], many=True).data
 
     def get_is_subscribed(self, author):
         if isinstance(author, User):

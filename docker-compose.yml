@@ -18,7 +18,8 @@ services:
       cp -r /app/collected_static/. /backend_static/static/ &&
       python manage.py makemigrations &&
       python manage.py migrate &&
-      python manage.py load_ingredients /app/data/ingredients.csv &&
+      python manage.py load_ingredients /app/data/ingredients.json --f json &&
+      python manage.py load_tags /app/data/tags.json &&
       gunicorn --bind 0.0.0.0:8000 food_back.wsgi
       "
     depends_on:

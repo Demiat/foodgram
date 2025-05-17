@@ -1,11 +1,20 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
-class IsAuthorOrAdminOnly(BasePermission):
-    """Автор или администратор."""
+class IsAuthOrAuthorOrAdminOrReadOnly(BasePermission):
+    """
+    Для аутентифицированных пользователей имеющих статус админа
+    или автора, иначе только просмотр.
+    """
 
-    def has_object_permission(self, request, view, instance):
+    def has_permission(self, request, view):
+        """Задает общие разрешения на уровне представления."""
+        return request.method in SAFE_METHODS or request.user.is_authenticated
+
+    def has_object_permission(self, request, view, recipe):
+        """Задает конкретные разрешения на уровне доступа к объекту."""
         return (
-            request.user
-            and (request.user.is_staff or request.user == instance.author)
+            request.method in SAFE_METHODS
+            or request.user.is_staff
+            or recipe.author == request.user
         )
