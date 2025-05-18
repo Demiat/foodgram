@@ -1,7 +1,4 @@
-import base64
-
-from django.core.files.base import ContentFile
-from djoser.serializers import UserCreateSerializer, UserSerializer
+from djoser.serializers import UserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -9,10 +6,8 @@ from recipes.constants import MIN_AMOUNT, MIN_COOKING_TIME
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag, User)
 
-from .constants import (AMOUNT_INGREDIENTS, EMTY_INGREDIENTS, EMTY_TAGS,
-                        INGREDIENTS_VALIDATE, IS_FAVORITED_PARAM_NAME,
-                        IS_SHOPPING_CART_PARAM_NAME, REPETITIVE_INGREDIENTS,
-                        REPETITIVE_TAGS, TAGS_VALIDATE)
+from .constants import (REPETITIVE_ERROR, EMPTY_INGREDIENTS, EMPTY_TAGS,
+                        NOT_IMAGE)
 
 
 class UserSerializerDjoser(UserSerializer):
@@ -129,13 +124,12 @@ class RecipesReadSerializer(serializers.ModelSerializer):
 
 class RecipesWriteSerializer(serializers.ModelSerializer):
 
-    image = Base64ImageField(required=True)
-    ingredients = IngredientInRecipeCreateSerializer(many=True, required=True)
+    image = Base64ImageField()
+    ingredients = IngredientInRecipeCreateSerializer(many=True)
 
     class Meta:
         model = Recipe
         fields = (
-            'id',
             'tags',
             'ingredients',
             'name',
@@ -144,33 +138,46 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             'image',
         )
 
+    def _repetitive_validate(self, objects_list):
+        duplicates = {}
+        repetitive = False
+        for obj in objects_list:
+            if duplicates.get(obj.id):
+                duplicates[obj.id] += 1
+                repetitive = True
+            else:
+                duplicates[obj.id] = 1
+        if repetitive:
+            raise serializers.ValidationError(
+                REPETITIVE_ERROR.format(
+                    {k: v for k, v in duplicates.items() if v > 1}
+                )
+            )
+
+    def validate_image(self, image):
+        if not image:
+            raise serializers.ValidationError(NOT_IMAGE)
+        return image
+
     def validate_tags(self, tags):
         if not tags:
-            raise serializers.ValidationError(EMTY_TAGS)
-        if len(tags) != len(set(tags)):
-            raise serializers.ValidationError(REPETITIVE_TAGS)
+            raise serializers.ValidationError(EMPTY_TAGS)
+        self._repetitive_validate(tags)
         return tags
 
     def validate_ingredients(self, ingredients):
-        ing = []
-        for ingredient in ingredients:
-            if ingredient['amount'] < 1:
-                raise serializers.ValidationError(AMOUNT_INGREDIENTS)
-            ing.append(ingredient['ingredient'])
-        if len(ing) != len(set(ing)):
-            raise serializers.ValidationError(REPETITIVE_INGREDIENTS)
-        if not ing:
-            raise serializers.ValidationError(EMTY_INGREDIENTS)
+        if not ingredients:
+            raise serializers.ValidationError(EMPTY_INGREDIENTS)
+        self._repetitive_validate([item['ingredient'] for item in ingredients])
         return ingredients
 
     def _set_recipe_ingredient(self, recipe, ingredients):
         """Заполним связанную таблицу RecipeIngredient."""
-        for ingredient in ingredients:
-            RecipeIngredient.objects.create(
-                ingredient=ingredient['ingredient'],
-                recipe=recipe,
-                amount=ingredient['amount']
-            )
+        (RecipeIngredient.objects.bulk_create(
+            ingredient=ingredient['ingredient'],
+            recipe=recipe,
+            amount=ingredient['amount']
+        ) for ingredient in ingredients)
 
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
@@ -179,17 +186,12 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        if 'ingredients' not in validated_data:
-            raise serializers.ValidationError(INGREDIENTS_VALIDATE)
-        if 'tags' not in validated_data:
-            raise serializers.ValidationError(TAGS_VALIDATE)
         ingredients = validated_data.pop('ingredients')
         instance.recipeingredients.all().delete()
         self._set_recipe_ingredient(
             recipe=instance, ingredients=ingredients
         )
-        updated_recipe = super().update(instance, validated_data)
-        return updated_recipe
+        return super().update(instance, validated_data)
 
     def to_representation(self, recipe):
         return RecipesReadSerializer(recipe, context=self.context).data
@@ -200,27 +202,18 @@ class LimitedRecipesReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
+        read_only_fields = fields
 
 
-class SubscriptionSerializer(serializers.ModelSerializer):
+class FollowSerializer(UserSerializerDjoser):
 
     recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
-    is_subscribed = serializers.SerializerMethodField()
+    recipes_count = serializers.IntegerField(source='recipes.count')
 
-    class Meta:
+    class Meta(UserSerializerDjoser.Meta):
         model = User
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-            'recipes',
-            'recipes_count',
-            'avatar'
-        )
+        fields = UserSerializerDjoser.Meta.fields + (
+            'recipes', 'recipes_count')
 
     def get_recipes(self, authors):
         try:
@@ -231,11 +224,3 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             recipes_limit = None
         return LimitedRecipesReadSerializer(
             authors.recipes.all()[:recipes_limit], many=True).data
-
-    def get_is_subscribed(self, author):
-        if isinstance(author, User):
-            return self.context['request'].user.followings.filter(
-                to_user=author).exists()
-
-    def get_recipes_count(self, author):
-        return author.recipes.count()

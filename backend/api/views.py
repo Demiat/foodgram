@@ -22,7 +22,7 @@ from .constants import FOLLOWING_ERROR, SELF_FOLLOWING
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (AvatarSetSerializer, IngredientSerializer,
                           LimitedRecipesReadSerializer, RecipesReadSerializer,
-                          RecipesWriteSerializer, SubscriptionSerializer,
+                          RecipesWriteSerializer, FollowSerializer,
                           TagSerializer, UserSerializerDjoser)
 
 
@@ -91,7 +91,7 @@ class UserViewSet(UserViewSetDjoser):
 
         page = self.paginate_queryset(queryset) or []
         return self.get_paginated_response(
-            SubscriptionSerializer(
+            FollowSerializer(
                 page, many=True, context={'request': request}).data
         )
 
@@ -111,7 +111,7 @@ class UserViewSet(UserViewSetDjoser):
                 raise ValidationError(FOLLOWING_ERROR)
             Follow.objects.create(from_user=request.user, to_user=author)
             return Response(
-                SubscriptionSerializer(
+                FollowSerializer(
                     author,
                     context={'request': request}).data,
                 status=status.HTTP_201_CREATED
@@ -149,6 +149,10 @@ class RecipesViewSet(ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (IsAuthOrAuthorOrAdminOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = False
+        return super().update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
