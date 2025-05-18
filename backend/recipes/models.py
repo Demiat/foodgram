@@ -1,13 +1,11 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import (MinValueValidator,
-                                    RegexValidator)
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
-from .constants import (LENGTH_USERNAME, MAX_LENGTH_EMAIL,
-                        MAX_LENGTH_INGRED, MAX_LENGTH_NAME,
-                        MAX_LENGTH_TAG_SLUG, MAX_LENGTH_TAG_NAME,
-                        USERNAME_REGEX, MAX_LENGTH_MEASUREMENT,
-                        USERNAME_REGEX_TEXT, MIN_COOKING_TIME, MIN_AMOUNT)
+from .constants import (LENGTH_USERNAME, MAX_LENGTH_EMAIL, MAX_LENGTH_INGRED,
+                        MAX_LENGTH_MEASUREMENT, MAX_LENGTH_NAME,
+                        MAX_LENGTH_TAG_NAME, MAX_LENGTH_TAG_SLUG, MIN_AMOUNT,
+                        MIN_COOKING_TIME, USERNAME_REGEX, USERNAME_REGEX_TEXT)
 
 
 class User(AbstractUser):

@@ -1,8 +1,8 @@
-from django.shortcuts import redirect
 from django.http import Http404
+from django.shortcuts import redirect
 
-from .models import Recipe
 from .constants import RECIPE_NOT_FOUND
+from .models import Recipe
 
 
 def get_short_link_recipe(request, recipe_id):

@@ -1,0 +1,11 @@
+Список покупок от {{ current_date|date:"d.m.Y" }}
+
+Продукты:
+    {% for ingredient in ingredients %}
+        {{ forloop.counter }}. {{ ingredient.ingredient__name|capfirst }} - {{ ingredient.total_amount }} {{ ingredient.ingredient__measurement_unit }}
+    {% endfor %}
+
+Для рецептов:
+    {% for recipe in recipes %}
+        (Автор: {{ recipe.author }}) - {{ recipe.name }}
+    {% endfor %}

@@ -1,33 +1,29 @@
-import csv
+from datetime import datetime
 
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import IntegrityError
 from django.db.models import Prefetch, Sum
-from django.http import HttpResponse
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet as UserViewSetDjoser
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import (
-    SAFE_METHODS, AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Tag, Follow, User)
 from api.permissions import IsAuthOrAuthorOrAdminOrReadOnly
+from recipes.models import (Favorite, Follow, Ingredient, Recipe,
+                            RecipeIngredient, ShoppingCart, Tag, User)
 
-from .constants import (FOLLOWING_ERROR, IS_FAVORITED_PARAM_NAME,
-                        IS_SHOPPING_CART_PARAM_NAME, SELF_FOLLOWING)
+from .constants import FOLLOWING_ERROR, SELF_FOLLOWING
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (AvatarSetSerializer, IngredientSerializer,
                           LimitedRecipesReadSerializer, RecipesReadSerializer,
-                          RecipesWriteSerializer,
-                          SubscriptionSerializer, TagSerializer,
-                          UserSerializerDjoser)
+                          RecipesWriteSerializer, SubscriptionSerializer,
+                          TagSerializer, UserSerializerDjoser)
 
 
 class UserViewSet(UserViewSetDjoser):
@@ -176,20 +172,20 @@ class RecipesViewSet(ModelViewSet):
             )
         })
 
-    def _favorite_and_shopping_methods(self, request, recipe_id, Model):
+    def _favorite_and_shopping_methods(self, request, recipe_id, model):
         """Добавляет рецепт в избранное или список покупок."""
         recipe = get_object_or_404(Recipe, pk=recipe_id)
         if request.method == 'POST':
-            if Model.objects.filter(
+            if model.objects.filter(
                     user=request.user, recipe=recipe).exists():
                 raise ValidationError(FOLLOWING_ERROR)
-            Model.objects.create(user=request.user, recipe=recipe)
+            model.objects.create(user=request.user, recipe=recipe)
             return Response(
                 LimitedRecipesReadSerializer(recipe).data,
                 status=status.HTTP_201_CREATED
             )
         elif request.method == 'DELETE':
-            get_object_or_404(Model, user=request.user, recipe=recipe).delete()
+            get_object_or_404(model, user=request.user, recipe=recipe).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -220,27 +216,24 @@ class RecipesViewSet(ModelViewSet):
         url_path=settings.DOWNLOAD_CART_POINT,
         permission_classes=(IsAuthenticated,)
     )
-    def download_shopping_cart(self, request, *args, **kwargs):
+    def download_shopping_cart(self, request):
         """Отдаёт файл со списком игредиентов к покупке."""
-        recipes_ids = ShoppingCart.objects.values_list(
-            'recipe', flat=True).filter(user=request.user)
+        recipes = [rec.recipe for rec in request.user.shoppingcarts.all()]
         ingredients_with_amount = RecipeIngredient.objects.filter(
-            recipe__in=recipes_ids).values(
+            recipe__in=recipes).values(
                 'ingredient__name', 'ingredient__measurement_unit').annotate(
                 total_amount=Sum('amount')).order_by('ingredient__name')
 
-        response = HttpResponse(content_type='text/csv; charset=utf-8')
-
-        writer = csv.writer(response)  # передаём объект потока вывода
-        writer.writerow(
-            ['продукты', 'Общее количество', 'Единица измерения']
+        content = render_to_string(
+            'shop_template.txt', {
+                'current_date': datetime.now(),
+                'ingredients': ingredients_with_amount,
+                'recipes': recipes,
+            }
         )
 
-        for ingredient in ingredients_with_amount:
-            writer.writerow(
-                [ingredient['ingredient__name'],
-                 ingredient['total_amount'],
-                 ingredient['ingredient__measurement_unit']]
-            )
-
-        return response
+        return FileResponse(
+            content,
+            as_attachment=True,
+            filename=f'shopping_list_{datetime.now().strftime("%d.%m.%Y")}.txt'
+        )
