@@ -9,9 +9,9 @@ FOLLOWING_ERROR = 'Подписка уже есть!'
 SELF_FOLLOWING = 'Нельзя подписаться на самого себя!'
 IS_FAVORITED_PARAM_NAME = 'is_favorited'
 IS_SHOPPING_CART_PARAM_NAME = 'is_in_shopping_cart'
-# INGREDIENTS_VALIDATE = {
-#     'error': 'Поле "ingredients" отсутствует или не прошло валидацию'
-# }
-# TAGS_VALIDATE = {
-#     'error': 'Поле "tags" отсутствует или не прошло валидацию'
-# }
+INGREDIENTS_VALIDATE = {
+    'error': 'Поле ingredients отсутствует или не прошло валидацию'
+}
+TAGS_VALIDATE = {
+    'error': 'Поле tags отсутствует или не прошло валидацию'
+}

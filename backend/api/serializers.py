@@ -6,8 +6,8 @@ from recipes.constants import MIN_AMOUNT, MIN_COOKING_TIME
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag, User)
 
-from .constants import (REPETITIVE_ERROR, EMPTY_INGREDIENTS, EMPTY_TAGS,
-                        NOT_IMAGE)
+from .constants import (EMPTY_INGREDIENTS, EMPTY_TAGS, INGREDIENTS_VALIDATE,
+                        NOT_IMAGE, REPETITIVE_ERROR, TAGS_VALIDATE)
 
 
 class UserSerializerDjoser(UserSerializer):
@@ -170,6 +170,13 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(EMPTY_INGREDIENTS)
         self._repetitive_validate([item['ingredient'] for item in ingredients])
         return ingredients
+
+    def validate(self, attrs):
+        if 'ingredients' not in attrs:
+            raise serializers.ValidationError(INGREDIENTS_VALIDATE)
+        if 'tags' not in attrs:
+            raise serializers.ValidationError(TAGS_VALIDATE)
+        return super().validate(attrs)
 
     def _set_recipe_ingredient(self, recipe, ingredients):
         """Заполним связанную таблицу RecipeIngredient."""

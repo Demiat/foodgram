@@ -1,6 +1,8 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import (Case, CharField, Count, Exists, Max, OuterRef,
+                              Value, When)
 from django.utils.safestring import mark_safe
-from django.db.models import Case, When, CharField, Value, Count, Max, Exists, OuterRef
 
 from .models import (Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
                      ShoppingCart, Tag, User)
@@ -8,33 +10,96 @@ from .models import (Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
 admin.site.empty_value_display = '-пусто-'
 
 
-class RecipesCountMixin(admin.ModelAdmin):
+class RecipesCountMixin:
+    """Показывает кол-во рецептов для того или иного связанного объекта."""
+
     list_display: list[str] = ['recipes_count']
 
     def recipes_count(self, obj):
-        """Рецептов"""
+        """Считает рецепты для связанного объекта"""
         return obj.recipes.count()
     recipes_count.short_description = 'Рецептов'
 
 
+class GetImageMixin:
+
+    @mark_safe
+    def image_miniature(self, obj):
+        """Выводит изображение в миниатюре для Пользователей и Рецептов."""
+        if hasattr(obj, 'image'):
+            image_obj = obj.image
+            obj_name = obj.name
+        else:
+            image_obj = obj.avatar
+            obj_name = obj.username
+        if image_obj:
+            return f'<img src="{image_obj.url}" alt="{obj_name}" width="50">'
+        return 'not image'
+    image_miniature.short_description = 'Изображение'
+
+
 class HasRecipesFilter(admin.SimpleListFilter):
-    title = 'Продукты, использованные в рецептах'
+    """Фильтрует по признаку наличия рецептов."""
+
+    title = 'Наличие рецептов'
     parameter_name = 'has_recipes'
 
     def lookups(self, request, model_admin):
         return (
-            ('yes', 'Используются в рецептах'),
-            ('no', 'Не используются в рецептах'),
+            ('yes', 'С рецептами'),
+            ('no', 'Без рецептов'),
         )
 
     def queryset(self, request, queryset):
-        exists_query = Recipe.objects.filter(ingredients=OuterRef('pk'))
         if self.value() == 'yes':
-            return queryset.annotate(has_recipe=Exists(
-                exists_query)).filter(has_recipe=True)
+            return queryset.filter(recipes__isnull=False).distinct()
         elif self.value() == 'no':
-            return queryset.annotate(has_recipe=Exists(
-                exists_query)).filter(has_recipe=False)
+            return queryset.filter(recipes=None)
+        return queryset
+
+
+class UserRelationshipFilter(admin.SimpleListFilter):
+    """Выводит пользователей по наличию подписок и подписчиков."""
+
+    title = 'Подписки и подписчики'
+    parameter_name = 'relationship_status'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('subscribed', 'Подписан на кого-то'),
+            ('followed', 'Есть подписчики'),
+            ('both', 'И подписан, и есть подписчики'),
+            ('none', 'Ни подписок, ни подписчиков'),
+        )
+
+    def queryset(self, request, queryset):
+        subscribed_users = Follow.objects.filter(
+            from_user=OuterRef('pk'))  # Подписки
+        followed_by_users = Follow.objects.filter(
+            to_user=OuterRef('pk'))  # Подписчики
+
+        if self.value() == 'subscribed':
+            return queryset.annotate(
+                has_subscription=Exists(subscribed_users)
+            ).filter(has_subscription=True)
+
+        elif self.value() == 'followed':
+            return queryset.annotate(
+                has_follower=Exists(followed_by_users)
+            ).filter(has_follower=True)
+
+        elif self.value() == 'both':  # И подписан и есть подписчики
+            return queryset.annotate(
+                has_subscription=Exists(subscribed_users),
+                has_follower=Exists(followed_by_users)
+            ).filter(has_subscription=True, has_follower=True)
+
+        elif self.value() == 'none':  # Ни подписок, ни подписчиков
+            return queryset.annotate(
+                has_subscription=Exists(subscribed_users),
+                has_follower=Exists(followed_by_users)
+            ).filter(has_subscription=False, has_follower=False)
+
         return queryset
 
 
@@ -63,7 +128,7 @@ class CookingTimeFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         # Раннее завершение, если нет данных
-        if not getattr(self, 'is_valid', True):
+        if not getattr(self, 'is_valid', False):
             return []
 
         # Разделим все рецепты на 3 категории по времени готовки
@@ -113,8 +178,25 @@ class CookingTimeFilter(admin.SimpleListFilter):
 
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
     search_fields = ('email', 'username')
+    list_display = [
+        'id', 'username', 'full_name', 'email', 'image_miniature',
+        'subscription_count', 'follower_count'
+    ] + RecipesCountMixin.list_display
+    list_filter = (
+        'is_active', 'is_staff', 'is_superuser',
+        UserRelationshipFilter, HasRecipesFilter
+    )
+
+    def full_name(self, user):
+        return f'{user.first_name} {user.last_name}'.strip()
+
+    def subscription_count(self, user):
+        return user.followings.count()
+
+    def follower_count(self, user):
+        return user.followers.count()
 
 
 @admin.register(Follow)
@@ -123,15 +205,15 @@ class FollowAdmin(admin.ModelAdmin):
 
 
 @admin.register(Tag)
-class TagAdmin(RecipesCountMixin):
-    list_display = RecipesCountMixin.list_display + ['name', 'slug']
+class TagAdmin(admin.ModelAdmin, RecipesCountMixin):
+    list_display = ['name', 'slug'] + RecipesCountMixin.list_display
     search_fields = ('name', 'slug')
 
 
 @admin.register(Ingredient)
-class IngredientAdmin(RecipesCountMixin):
-    list_display = RecipesCountMixin.list_display + [
-        'name', 'measurement_unit']
+class IngredientAdmin(admin.ModelAdmin, RecipesCountMixin):
+    list_display = [
+        'name', 'measurement_unit'] + RecipesCountMixin.list_display
     search_fields = ('name', 'measurement_unit')
     list_filter = (HasRecipesFilter,)
 
@@ -142,7 +224,7 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 
 
 @admin.register(Recipe)
-class RecipeAdmin(admin.ModelAdmin):
+class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
     list_display = (
         'id',
         'name',
@@ -157,31 +239,17 @@ class RecipeAdmin(admin.ModelAdmin):
 
     # Количество избранных рецептов
     def favorite_count(self, obj):
-        """В Избранном"""
+        """Показывает сколько рецептов в избранном."""
         return obj.favorites.count()
     favorite_count.short_description = 'В Избранном'
 
-    # Формирование списка продуктов
     @mark_safe
     def product_list(self, obj):
-        items = '<br>'.join(f'- {item}' for item in obj.ingredients.all())
-        return f'<div>{items}</div>'
+        """Выводит список продуктов в рецептах."""
+        return '<br>'.join(f'- {item}' for item in obj.ingredients.all())
     product_list.short_description = 'Продукты'
 
-    # Просмотр миниатюр изображения
-    @mark_safe
-    def image_miniature(self, obj):
-        if obj.image:
-            return f'<img src="{obj.image.url}" alt="{obj.name}" width="50">'
-        return '-'
-    image_miniature.short_description = 'Изображение'
 
-
-@admin.register(ShoppingCart)
-class ShoppingCartAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Favorite)
-class FavoriteAdmin(admin.ModelAdmin):
+@admin.register(ShoppingCart, Favorite)
+class FavoriteShoppingCartAdmin(admin.ModelAdmin):
     pass

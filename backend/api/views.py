@@ -20,9 +20,9 @@ from recipes.models import (Favorite, Follow, Ingredient, Recipe,
 
 from .constants import FOLLOWING_ERROR, SELF_FOLLOWING
 from .filters import IngredientFilter, RecipeFilter
-from .serializers import (AvatarSetSerializer, IngredientSerializer,
-                          LimitedRecipesReadSerializer, RecipesReadSerializer,
-                          RecipesWriteSerializer, FollowSerializer,
+from .serializers import (AvatarSetSerializer, FollowSerializer,
+                          IngredientSerializer, LimitedRecipesReadSerializer,
+                          RecipesReadSerializer, RecipesWriteSerializer,
                           TagSerializer, UserSerializerDjoser)
 
 
@@ -149,10 +149,6 @@ class RecipesViewSet(ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (IsAuthOrAuthorOrAdminOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
-
-    def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = False
-        return super().update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
