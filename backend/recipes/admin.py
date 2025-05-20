@@ -204,7 +204,8 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
 
 @admin.register(Follow)
 class FollowAdmin(admin.ModelAdmin):
-    search_fields = ('from_user__username', 'from_user__email', 'to_user__username', 'to_user__email')
+    search_fields = ('from_user__username', 'from_user__email',
+                     'to_user__username', 'to_user__email')
     list_filter = ('from_user', 'to_user')
 
 

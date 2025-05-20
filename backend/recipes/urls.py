@@ -1,5 +1,4 @@
-from django.conf import settings
-from django.urls import include, path
+from django.urls import path
 
 from .views import get_short_link_recipe
 
