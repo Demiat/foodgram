@@ -3,7 +3,7 @@ from http import HTTPStatus
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from users.models import User
+from recipes.models import User
 
 
 class FoodgramAPITestCase(TestCase):
