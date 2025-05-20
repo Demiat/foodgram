@@ -4,6 +4,8 @@ db.sqlite3.bak
 docs/
 static/
 media/
+run.sh
+fix_isort.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

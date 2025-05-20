@@ -26,9 +26,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
-    'users.apps.UsersConfig',
-    'api.apps.ApiConfig',
     'recipes.apps.RecipesConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -112,7 +111,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'collected_static'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / '/var/www/foodgram/media/'
+MEDIA_ROOT = BASE_DIR / 'var/www/foodgram/media/'
 
 
 REST_FRAMEWORK = {
@@ -140,10 +139,7 @@ REST_FRAMEWORK = {
 
 }
 
-AUTH_USER_MODEL = 'users.User'
-AUTHENTICATION_BACKENDS = (
-    'users.email_auth_backend.EmailAuthBackend',
-)
+AUTH_USER_MODEL = 'recipes.User'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -155,6 +151,7 @@ GET_LINK_POINT = 'get-link'
 FAVORITES_POINT = 'favorite'
 SHOPPING_CART_POINT = 'shopping_cart'
 DOWNLOAD_CART_POINT = 'download_shopping_cart'
+SHORT_URL_PREFIX = 's/'
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -164,4 +161,14 @@ SWAGGER_SETTINGS = {
             'in': 'header'
         }
     }
+}
+
+DJOSER = {
+    'HIDE_USERS': False,
+    'PERMISSIONS': {
+        'user_list': ['rest_framework.permissions.AllowAny'],
+    },
+    'SERIALIZERS': {
+        # 'current_user': 'api.serializers.UserSerializerDjoser',
+    },
 }
