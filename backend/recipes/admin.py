@@ -1,3 +1,4 @@
+import numpy
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db.models import (Case, CharField, Count, Exists, Max, OuterRef,
@@ -13,17 +14,18 @@ admin.site.empty_value_display = '-пусто-'
 class RecipesCountMixin:
     """Показывает кол-во рецептов для того или иного связанного объекта."""
 
-    list_display: list[str] = ['recipes_count']
+    list_display = ['recipes_count']
 
+    @admin.display(description='Рецептов')
     def recipes_count(self, obj):
         """Считает рецепты для связанного объекта"""
         return obj.recipes.count()
-    recipes_count.short_description = 'Рецептов'
 
 
 class GetImageMixin:
 
     @mark_safe
+    @admin.display(description='Изображение')
     def image_miniature(self, obj):
         """Выводит изображение в миниатюре для Пользователей и Рецептов."""
         if hasattr(obj, 'image'):
@@ -35,7 +37,6 @@ class GetImageMixin:
         if image_obj:
             return f'<img src="{image_obj.url}" alt="{obj_name}" width="50">'
         return 'not image'
-    image_miniature.short_description = 'Изображение'
 
 
 class HasRecipesFilter(admin.SimpleListFilter):
@@ -43,12 +44,13 @@ class HasRecipesFilter(admin.SimpleListFilter):
 
     title = 'Наличие рецептов'
     parameter_name = 'has_recipes'
+    OPTIONS = (
+        ('yes', 'С рецептами'),
+        ('no', 'Без рецептов'),
+    )
 
     def lookups(self, request, model_admin):
-        return (
-            ('yes', 'С рецептами'),
-            ('no', 'Без рецептов'),
-        )
+        return self.OPTIONS
 
     def queryset(self, request, queryset):
         if self.value() == 'yes':
@@ -58,49 +60,46 @@ class HasRecipesFilter(admin.SimpleListFilter):
         return queryset
 
 
-class UserRelationshipFilter(admin.SimpleListFilter):
-    """Выводит пользователей по наличию подписок и подписчиков."""
+class HasSubscriptionFilter(admin.SimpleListFilter):
+    """Выводит авторов, на которых есть подписки."""
 
-    title = 'Подписки и подписчики'
-    parameter_name = 'relationship_status'
+    title = 'Подписки'
+    parameter_name = 'Subscriptions'
+    OPTIONS = (
+        ('yes', 'Есть подписки?'),
+        ('no', 'Нет подписок'),
+    )
 
     def lookups(self, request, model_admin):
-        return (
-            ('subscribed', 'Подписан на кого-то'),
-            ('followed', 'Есть подписчики'),
-            ('both', 'И подписан, и есть подписчики'),
-            ('none', 'Ни подписок, ни подписчиков'),
-        )
+        return self.OPTIONS
 
-    def queryset(self, request, queryset):
-        subscribed_users = Follow.objects.filter(
-            from_user=OuterRef('pk'))  # Подписки
-        followed_by_users = Follow.objects.filter(
-            to_user=OuterRef('pk'))  # Подписчики
+    def queryset(self, request, users):
+        if self.value() == 'yes':
+            return users.filter(authors__isnull=False).distinct()
+        elif self.value() == 'no':
+            return users.filter(authors=None)
+        return users
 
-        if self.value() == 'subscribed':
-            return queryset.annotate(
-                has_subscription=Exists(subscribed_users)
-            ).filter(has_subscription=True)
 
-        elif self.value() == 'followed':
-            return queryset.annotate(
-                has_follower=Exists(followed_by_users)
-            ).filter(has_follower=True)
+class HasFollowersFilter(admin.SimpleListFilter):
+    """Выводит пользователей, которые подписаны на авторов."""
 
-        elif self.value() == 'both':  # И подписан и есть подписчики
-            return queryset.annotate(
-                has_subscription=Exists(subscribed_users),
-                has_follower=Exists(followed_by_users)
-            ).filter(has_subscription=True, has_follower=True)
+    title = 'Подписчики'
+    parameter_name = 'Followers'
+    OPTIONS = (
+        ('yes', 'Подписан на кого-то?'),
+        ('no', 'Нет подписок'),
+    )
 
-        elif self.value() == 'none':  # Ни подписок, ни подписчиков
-            return queryset.annotate(
-                has_subscription=Exists(subscribed_users),
-                has_follower=Exists(followed_by_users)
-            ).filter(has_subscription=False, has_follower=False)
+    def lookups(self, request, model_admin):
+        return self.OPTIONS
 
-        return queryset
+    def queryset(self, request, users):
+        if self.value() == 'yes':
+            return users.filter(followers__isnull=False).distinct()
+        elif self.value() == 'no':
+            return users.filter(followers=None)
+        return users
 
 
 class CookingTimeFilter(admin.SimpleListFilter):
@@ -112,49 +111,46 @@ class CookingTimeFilter(admin.SimpleListFilter):
     title = 'Время приготовления'
     parameter_name = 'cooking_time'
 
-    def __init__(self, request, params, model, model_admin):
-        # Рассчитаем пороговые значения для фильтрации
-        # исходя из самих данных времени приготовления в рецептах
-        self.max_cooking_time = model.objects.aggregate(
-            Max('cooking_time'))['cooking_time__max']
-        if self.max_cooking_time is None or self.max_cooking_time == 0:
-            # Если нет записей или 0, устанавливаем флаг выхода
-            self.is_valid = False
-        else:
-            self.fast = self.max_cooking_time // 3
-            self.medium = self.fast * 2
-            self.is_valid = True
-        super().__init__(request, params, model, model_admin)
+    def recipes_and_cooking_times_calculate(self):
+        self.cooking_times = sorted(
+            Recipe.objects.values_list('cooking_time', flat=True)
+        )
+        # Создаем гистограмму с тремя бинами
+        self.number_recipes, self.time_levels = numpy.histogram(
+            self.cooking_times, bins=3)
+        # self.fast = self.time_levels[1]
+        # self.medium = self.time_levels[2]
 
     def lookups(self, request, model_admin):
         # Раннее завершение, если нет данных
-        if not getattr(self, 'is_valid', False):
-            return []
+        # if not getattr(self, 'is_valid', False):
+        #     return []
+        
 
         # Разделим все рецепты на 3 категории по времени готовки
         # Для этого создадим поле-признак category и заполним его по условиям
-        results = Recipe.objects.annotate(
-            category=Case(
-                When(cooking_time__lt=self.fast, then=Value('fast')),
-                When(
-                    cooking_time__gte=self.fast,
-                    cooking_time__lte=self.medium,
-                    then=Value('medium')),
-                default=Value('slow'),
-                output_field=CharField(),
-            ),
-            # Сгруппируем записи по полю category и посчитаем кол-во этих полей
-        ).values('category').annotate(
-            recipes_count=Count('id')).order_by('category')
+        # results = Recipe.objects.annotate(
+        #     category=Case(
+        #         When(cooking_time__lt=self.fast, then=Value('fast')),
+        #         When(
+        #             cooking_time__gte=self.fast,
+        #             cooking_time__lte=self.medium,
+        #             then=Value('medium')),
+        #         default=Value('slow'),
+        #         output_field=CharField(),
+        #     ),
+        #     # Сгруппируем записи по полю category и посчитаем кол-во этих полей
+        # ).values('category').annotate(
+        #     recipes_count=Count('id')).order_by('category')
 
-        result_data = {}
-        for item in results:
-            if item['category'] == 'fast':
-                result_data['fast'] = item['recipes_count']
-            elif item['category'] == 'medium':
-                result_data['medium'] = item['recipes_count']
-            elif item['category'] == 'slow':
-                result_data['slow'] = item['recipes_count']
+        # result_data = {}
+        # for item in results:
+        #     if item['category'] == 'fast':
+        #         result_data['fast'] = item['recipes_count']
+        #     elif item['category'] == 'medium':
+        #         result_data['medium'] = item['recipes_count']
+        #     elif item['category'] == 'slow':
+        #         result_data['slow'] = item['recipes_count']
 
         return [
             ('fast', 'Быстрее {} мин. Рецептов ({})'.format(
@@ -186,27 +182,27 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
     ] + RecipesCountMixin.list_display
     list_filter = (
         'is_active', 'is_staff', 'is_superuser',
-        UserRelationshipFilter, HasRecipesFilter
+        HasSubscriptionFilter, HasFollowersFilter, HasRecipesFilter
     )
 
+    @admin.display(description='ФИО')
     def full_name(self, user):
         return f'{user.first_name} {user.last_name}'.strip()
-    full_name.short_description = 'ФИО'
 
+    @admin.display(description='Подписки')
     def subscription_count(self, user):
-        return user.followings.count()
-    subscription_count.short_description = 'Подписки'
+        return user.authors.count()
 
+    @admin.display(description='Подписчики')
     def follower_count(self, user):
         return user.followers.count()
-    follower_count.short_description = 'Подписчики'
 
 
 @admin.register(Follow)
 class FollowAdmin(admin.ModelAdmin):
     search_fields = ('from_user__username', 'from_user__email',
-                     'to_user__username', 'to_user__email')
-    list_filter = ('from_user', 'to_user')
+                     'author__username', 'author__email')
+    list_filter = ('from_user', 'author')
 
 
 @admin.register(Tag)
@@ -242,11 +238,10 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
     search_fields = ('name', 'author__username', 'tags__name')
     list_filter = ('tags', 'author', CookingTimeFilter)
 
-    # Количество избранных рецептов
+    @admin.display(description='В Избранном')
     def favorite_count(self, obj):
         """Показывает сколько рецептов в избранном."""
         return obj.favorites.count()
-    favorite_count.short_description = 'В Избранном'
 
     @mark_safe
     def product_list(self, obj):

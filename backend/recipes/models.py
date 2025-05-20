@@ -60,31 +60,31 @@ class Follow(models.Model):
 
     Поля:
     - from_user: Пользователь, который подписался (инициатор подписки).
-    - to_user: Пользователь, на которого подписываются (получатель подписки).
+    - author: Пользователь, на которого подписываются (получатель подписки).
     """
 
     from_user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='followings',
+        related_name='followers',
         verbose_name='Кто подписался'
     )
-    to_user = models.ForeignKey(
+    author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='followers',
+        related_name='authors',
         verbose_name='На кого подписались'
     )
 
     def __str__(self):
-        return f'{self.from_user} подписан на {self.to_user}'
+        return f'{self.from_user} подписан на {self.author}'
 
     class Meta:
         verbose_name = 'Подписчик'
         verbose_name_plural = 'Подписчики'
         constraints = (
             models.UniqueConstraint(
-                fields=('from_user', 'to_user'),
+                fields=('from_user', 'author'),
                 name='unique_followers'
             ),
         )
@@ -151,14 +151,16 @@ class Recipe(models.Model):
     tags = models.ManyToManyField(Tag)
     ingredients = models.ManyToManyField(
         Ingredient,
+        verbose_name='Продукт',
         through='RecipeIngredient',
     )
     author = models.ForeignKey(
         User,
+        verbose_name='Автор',
         on_delete=models.CASCADE,
     )
     text = models.TextField(
-        verbose_name='Описание рецепта',
+        verbose_name='Описание',
     )
     cooking_time = models.PositiveIntegerField(
         verbose_name='Время приготовления (мин.)',
@@ -193,7 +195,7 @@ class RecipeIngredient(models.Model):
     ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
-        verbose_name='Ингредиент'
+        verbose_name='Продукт'
     )
     amount = models.PositiveSmallIntegerField(
         verbose_name='Мера',
@@ -207,11 +209,11 @@ class RecipeIngredient(models.Model):
 
     class Meta:
         default_related_name = '%(model_name)ss'
-        verbose_name = 'Рецепт с мерой продукта'
-        verbose_name_plural = 'Рецепты с мерой продуктов'
+        verbose_name = 'Продукт в рецепте с мерой'
+        verbose_name_plural = 'Продукты в рецептах с мерой'
 
 
-class AdditionalBaseModel(models.Model):
+class AbstractUserRecipeRelation(models.Model):
     """Базовый абстрактный класс для избранного и списка покупок рецептов."""
 
     user = models.ForeignKey(
@@ -226,34 +228,35 @@ class AdditionalBaseModel(models.Model):
     def __str__(self):
         return f'{self.user}: {self.recipe}'
 
+    @classmethod
+    def __init_subclass__(cls, *args, unique_name=None, **kwargs):
+        """Устанавливает уникальный индекс при создании потомков."""
+        super().__init_subclass__(*args, **kwargs)
+        cls._meta.constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name=unique_name or f'unique_{cls.__name__.lower()}'
+            )
+        ]
+
     class Meta:
         abstract = True
         default_related_name = '%(model_name)ss'
 
 
-class Favorite(AdditionalBaseModel):
+class Favorite(AbstractUserRecipeRelation, unique_name='favorite_unique'):
     """Избранные рецепты."""
 
-    class Meta(AdditionalBaseModel.Meta):
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_favorite'
-            ),
-        )
+    class Meta(AbstractUserRecipeRelation.Meta):
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
 
 
-class ShoppingCart(AdditionalBaseModel):
+class ShoppingCart(
+    AbstractUserRecipeRelation, unique_name='shoppingcart_unique'
+):
     """Список покупок для рецептов."""
 
-    class Meta(AdditionalBaseModel.Meta):
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_shopping_cart'
-            ),
-        )
+    class Meta(AbstractUserRecipeRelation.Meta):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Список покупок'

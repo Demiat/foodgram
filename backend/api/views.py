@@ -20,10 +20,12 @@ from recipes.models import (Favorite, Follow, Ingredient, Recipe,
 
 from .constants import FOLLOWING_ERROR, SELF_FOLLOWING
 from .filters import IngredientFilter, RecipeFilter
-from .serializers import (AvatarSetSerializer, FollowSerializer,
-                          IngredientSerializer, LimitedRecipesReadSerializer,
-                          RecipesReadSerializer, RecipesWriteSerializer,
-                          TagSerializer, UserSerializerDjoser)
+from .serializers import (
+    AvatarSetSerializer, FollowSerializer,
+    IngredientSerializer, LimitedRecipesReadSerializer,
+    RecipesReadSerializer, RecipesWriteSerializer,
+    TagSerializer, UserSerializerDjoser
+)
 
 
 class UserViewSet(UserViewSetDjoser):
@@ -77,8 +79,8 @@ class UserViewSet(UserViewSetDjoser):
     def subscriptions(self, request):
         """Выводит список авторов (с рецептами), на которых подписан user."""
         # Получаем список пользователей, на которых подписаны
-        followed_users = self.request.user.followings.values_list(
-            'to_user', flat=True)
+        followed_users = self.request.user.followers.values_list(
+            'author', flat=True)
         # Подготовим список рецептов с сортировкой
         recipe_prefetch = Prefetch(
             'recipes', queryset=Recipe.objects.order_by(
@@ -107,9 +109,9 @@ class UserViewSet(UserViewSetDjoser):
             if author == request.user:
                 raise ValidationError(SELF_FOLLOWING)
             if Follow.objects.filter(
-                    from_user=request.user, to_user=author).exists():
+                    from_user=request.user, author=author).exists():
                 raise ValidationError(FOLLOWING_ERROR)
-            Follow.objects.create(from_user=request.user, to_user=author)
+            Follow.objects.create(from_user=request.user, author=author)
             return Response(
                 FollowSerializer(
                     author,
@@ -117,7 +119,7 @@ class UserViewSet(UserViewSetDjoser):
                 status=status.HTTP_201_CREATED
             )
         get_object_or_404(
-            Follow, from_user=request.user, to_user=author).delete()
+            Follow, from_user=request.user, author=author).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

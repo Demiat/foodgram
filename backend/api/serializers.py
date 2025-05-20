@@ -23,8 +23,8 @@ class UserSerializerDjoser(UserSerializer):
     def get_is_subscribed(self, author):
         return (
             not self.context['request'].user.is_anonymous
-            and self.context['request'].user.followings.filter(
-                to_user=author).exists()
+            and self.context['request'].user.followers.filter(
+                author=author).exists()
         )
 
 
