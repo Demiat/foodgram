@@ -197,7 +197,7 @@ class RecipesViewSet(ModelViewSet):
     def favorite(self, request, pk):
         """Добавляет рецепт в избранное."""
         return self._favorite_and_shopping_methods(
-            request, recipe_id=pk, Model=Favorite)
+            request, recipe_id=pk, model=Favorite)
 
     @action(
         detail=True,
@@ -208,7 +208,7 @@ class RecipesViewSet(ModelViewSet):
     def shopping_cart(self, request, pk):
         """Добавляет рецепт в список покупок."""
         return self._favorite_and_shopping_methods(
-            request, recipe_id=pk, Model=ShoppingCart)
+            request, recipe_id=pk, model=ShoppingCart)
 
     @action(
         detail=False,

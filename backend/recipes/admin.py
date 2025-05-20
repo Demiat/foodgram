@@ -191,17 +191,21 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
 
     def full_name(self, user):
         return f'{user.first_name} {user.last_name}'.strip()
+    full_name.short_description = 'ФИО'
 
     def subscription_count(self, user):
         return user.followings.count()
+    subscription_count.short_description = 'Подписки'
 
     def follower_count(self, user):
         return user.followers.count()
+    follower_count.short_description = 'Подписчики'
 
 
 @admin.register(Follow)
 class FollowAdmin(admin.ModelAdmin):
-    pass
+    search_fields = ('from_user__username', 'from_user__email', 'to_user__username', 'to_user__email')
+    list_filter = ('from_user', 'to_user')
 
 
 @admin.register(Tag)
