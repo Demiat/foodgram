@@ -12,7 +12,7 @@ python manage.py makemigrations
 python manage.py migrate
 
 # Загружаем продукты и тэги в базу
-python manage.py load_ingredients data/ingredients.json --f json
+python manage.py load_products data/ingredients.json
 python manage.py load_tags data/tags.json
 
 # Создаем тестового суперюзера

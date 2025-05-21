@@ -2,10 +2,18 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
-from .constants import (LENGTH_USERNAME, MAX_LENGTH_EMAIL, MAX_LENGTH_INGRED,
-                        MAX_LENGTH_MEASUREMENT, MAX_LENGTH_NAME,
-                        MAX_LENGTH_TAG_NAME, MAX_LENGTH_TAG_SLUG, MIN_AMOUNT,
-                        MIN_COOKING_TIME, USERNAME_REGEX, USERNAME_REGEX_TEXT)
+
+MAX_LENGTH_NAME = 256
+MAX_LENGTH_TAG_SLUG = 32
+MAX_LENGTH_TAG_NAME = 32
+MAX_LENGTH_INGRED = 128
+MAX_LENGTH_MEASUREMENT = 64
+MAX_LENGTH_EMAIL = 254
+LENGTH_USERNAME = 150
+USERNAME_REGEX_TEXT = 'Имя может содержать только буквы, цифры и знаки .@+-_'
+USERNAME_REGEX = r'^[\w.@+-]+$'
+MIN_COOKING_TIME = 1
+MIN_AMOUNT = 1
 
 
 class User(AbstractUser):

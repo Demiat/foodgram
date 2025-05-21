@@ -1,10 +1,11 @@
 from django.urls import path
+from django.conf import settings
 
 from .views import get_short_link_recipe
 
 urlpatterns = [
     path(
-        '<int:recipe_id>/',
+        f'{settings.SHORT_URL_PREFIX}<int:recipe_id>/',
         get_short_link_recipe,
         name='recipe_short_link'
     ),

@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet as UserViewSetDjoser
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -14,11 +15,10 @@ from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from api.permissions import IsAuthOrAuthorOrAdminOrReadOnly
+from api.permissions import IsAuthorOrReadOnly
 from recipes.models import (Favorite, Follow, Ingredient, Recipe,
                             RecipeIngredient, ShoppingCart, Tag, User)
 
-from .constants import FOLLOWING_ERROR, SELF_FOLLOWING
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (
     AvatarSetSerializer, FollowSerializer,
@@ -26,6 +26,11 @@ from .serializers import (
     RecipesReadSerializer, RecipesWriteSerializer,
     TagSerializer, UserSerializerDjoser
 )
+
+FOLLOWING_ERROR = 'Подписка уже есть!'
+RECORD_ERROR = 'Запись рецепта с id {} уже есть в базе!'
+SELF_FOLLOWING = 'Нельзя подписаться на самого себя!'
+RECIPE_NOT_FOUND = 'Рецепта c id {} нет в базе!'
 
 
 class UserViewSet(UserViewSetDjoser):
@@ -59,16 +64,16 @@ class UserViewSet(UserViewSetDjoser):
     )
     def set_or_delete_avatar(self, request):
         """Установка или удаление аватарки пользователя."""
-        if request.method == 'PUT':
-            serializer = AvatarSetSerializer(
-                instance=request.user,
-                data=request.data
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        request.user.avatar.delete(save=True)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if request.method != 'PUT':
+            request.user.avatar.delete(save=True)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = AvatarSetSerializer(
+            instance=request.user,
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(
         detail=False,
@@ -105,22 +110,24 @@ class UserViewSet(UserViewSetDjoser):
     )
     def subscribe(self, request, id):
         author = get_object_or_404(User, pk=id)
-        if request.method == 'POST':
-            if author == request.user:
-                raise ValidationError(SELF_FOLLOWING)
-            if Follow.objects.filter(
-                    from_user=request.user, author=author).exists():
-                raise ValidationError(FOLLOWING_ERROR)
-            Follow.objects.create(from_user=request.user, author=author)
-            return Response(
-                FollowSerializer(
-                    author,
-                    context={'request': request}).data,
-                status=status.HTTP_201_CREATED
-            )
-        get_object_or_404(
-            Follow, from_user=request.user, author=author).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if request.method != 'POST':
+            get_object_or_404(
+                Follow, from_user=request.user, author=author).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if author == request.user:
+            raise ValidationError(SELF_FOLLOWING)
+        follow_obj, created = Follow.objects.get_or_create(
+            from_user=request.user,
+            author=author
+        )
+        if not created:
+            raise ValidationError(FOLLOWING_ERROR)
+        return Response(
+            FollowSerializer(
+                author,
+                context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
 
 class TagsViewSet(ReadOnlyModelViewSet):
@@ -149,7 +156,7 @@ class RecipesViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
-    permission_classes = (IsAuthOrAuthorOrAdminOrReadOnly,)
+    permission_classes = (IsAuthorOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def perform_create(self, serializer):
@@ -167,28 +174,29 @@ class RecipesViewSet(ModelViewSet):
         permission_classes=(AllowAny,)
     )
     def get_short_link(self, request, pk=None):
+        if not Recipe.objects.filter(pk=pk).exists():
+            raise ValidationError(RECIPE_NOT_FOUND.format(pk))
         return Response({
-            'short-link': (
-                f'{request.build_absolute_uri("/")}{settings.SHORT_URL_PREFIX}'
-                f'{get_object_or_404(Recipe, pk=pk).id}'
+            'short-link': request.build_absolute_uri(
+                reverse('recipe_short_link', args=[pk])
             )
         })
 
     def _favorite_and_shopping_methods(self, request, recipe_id, model):
         """Добавляет рецепт в избранное или список покупок."""
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.method == 'POST':
-            if model.objects.filter(
-                    user=request.user, recipe=recipe).exists():
-                raise ValidationError(FOLLOWING_ERROR)
-            model.objects.create(user=request.user, recipe=recipe)
-            return Response(
-                LimitedRecipesReadSerializer(recipe).data,
-                status=status.HTTP_201_CREATED
-            )
-        elif request.method == 'DELETE':
+        if request.method != 'POST':
             get_object_or_404(model, user=request.user, recipe=recipe).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+        model_obj, created = model.objects.get_or_create(
+            user=request.user, recipe=recipe
+        )
+        if not created:
+            raise ValidationError(RECORD_ERROR.format(recipe_id))
+        return Response(
+            LimitedRecipesReadSerializer(recipe).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @action(
         detail=True,
@@ -222,9 +230,15 @@ class RecipesViewSet(ModelViewSet):
         """Отдаёт файл со списком игредиентов к покупке."""
         recipes = [rec.recipe for rec in request.user.shoppingcarts.all()]
         ingredients_with_amount = RecipeIngredient.objects.filter(
-            recipe__in=recipes).values(
-                'ingredient__name', 'ingredient__measurement_unit').annotate(
-                total_amount=Sum('amount')).order_by('ingredient__name')
+            recipe__in=recipes
+        ).values(
+            'ingredient__name',
+            'ingredient__measurement_unit'
+        ).annotate(
+            total_amount=Sum('amount')
+        ).order_by(
+            'ingredient__name'
+        )
 
         content = render_to_string(
             'shop_template.txt', {

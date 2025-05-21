@@ -82,7 +82,7 @@ class HasSubscriptionFilter(admin.SimpleListFilter):
 class HasFollowersFilter(admin.SimpleListFilter):
     """Выводит пользователей, которые подписаны на авторов."""
 
-    title = 'Подписчики'
+    title = 'Подписавшиеся'
     parameter_name = 'followers'
     OPTIONS = (
         ('yes', 'Подписан на кого-то?'),
@@ -167,11 +167,11 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
     def full_name(self, user):
         return f'{user.first_name} {user.last_name}'.strip()
 
-    @admin.display(description='Подписки')
+    @admin.display(description='Подписчиков')
     def subscription_count(self, user):
         return user.authors.count()
 
-    @admin.display(description='Подписчики')
+    @admin.display(description='Подписан на')
     def follower_count(self, user):
         return user.followers.count()
 
