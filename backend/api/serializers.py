@@ -180,11 +180,12 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
 
     def _set_recipe_ingredient(self, recipe, ingredients):
         """Заполним связанную таблицу RecipeIngredient."""
-        (RecipeIngredient.objects.bulk_create(
-            ingredient=ingredient['ingredient'],
-            recipe=recipe,
-            amount=ingredient['amount']
-        ) for ingredient in ingredients)
+        RecipeIngredient.objects.bulk_create(
+            RecipeIngredient(
+                recipe=recipe,
+                **ingredient_data
+            ) for ingredient_data in ingredients
+        )
 
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')

@@ -1,12 +1,15 @@
-from django.http import Http404
 from django.shortcuts import redirect
+from django.core.exceptions import ValidationError
+from django.http import HttpResponseBadRequest
 
-from .constants import RECIPE_NOT_FOUND
 from .models import Recipe
+
+RECIPE_NOT_FOUND = 'Рецепта c id {} нет в базе!'
 
 
 def get_short_link_recipe(request, recipe_id):
     """Выводит страницу по короткой ссылке."""
-    if Recipe.objects.filter(pk=recipe_id).exists():
-        return redirect(f'/api/recipes/{recipe_id}/')
-    raise Http404(RECIPE_NOT_FOUND)
+    if not Recipe.objects.filter(pk=recipe_id).exists():
+        # raise ValidationError(RECIPE_NOT_FOUND.format(recipe_id))
+        raise HttpResponseBadRequest(RECIPE_NOT_FOUND)
+    return redirect(f'/api/recipes/{recipe_id}')

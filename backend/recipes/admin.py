@@ -1,8 +1,6 @@
 import numpy
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.db.models import (Case, CharField, Count, Exists, Max, OuterRef,
-                              Value, When)
 from django.utils.safestring import mark_safe
 
 from .models import (Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
@@ -64,7 +62,7 @@ class HasSubscriptionFilter(admin.SimpleListFilter):
     """Выводит авторов, на которых есть подписки."""
 
     title = 'Подписки'
-    parameter_name = 'Subscriptions'
+    parameter_name = 'subscriptions'
     OPTIONS = (
         ('yes', 'Есть подписки?'),
         ('no', 'Нет подписок'),
@@ -85,7 +83,7 @@ class HasFollowersFilter(admin.SimpleListFilter):
     """Выводит пользователей, которые подписаны на авторов."""
 
     title = 'Подписчики'
-    parameter_name = 'Followers'
+    parameter_name = 'followers'
     OPTIONS = (
         ('yes', 'Подписан на кого-то?'),
         ('no', 'Нет подписок'),
@@ -109,67 +107,47 @@ class CookingTimeFilter(admin.SimpleListFilter):
     """
 
     title = 'Время приготовления'
-    parameter_name = 'cooking_time'
+    parameter_name = 'cooking_time__range'
 
-    def recipes_and_cooking_times_calculate(self):
-        self.cooking_times = sorted(
-            Recipe.objects.values_list('cooking_time', flat=True)
-        )
-        # Создаем гистограмму с тремя бинами
-        self.number_recipes, self.time_levels = numpy.histogram(
-            self.cooking_times, bins=3)
-        # self.fast = self.time_levels[1]
-        # self.medium = self.time_levels[2]
+    def filter_by_range(self, value_range, queryset=None):
+        base_queryset = queryset or Recipe.objects.all()
+        value_range = tuple(map(int, value_range.split()))
+        return base_queryset.filter(cooking_time__range=value_range)
 
     def lookups(self, request, model_admin):
-        # Раннее завершение, если нет данных
-        # if not getattr(self, 'is_valid', False):
-        #     return []
-        
+        cooking_times = sorted(
+            Recipe.objects.values_list('cooking_time', flat=True)
+        )
+        number_recipes, time_levels = numpy.histogram(
+            cooking_times, bins=3)
+        time_levels = list(map(int, time_levels))
 
-        # Разделим все рецепты на 3 категории по времени готовки
-        # Для этого создадим поле-признак category и заполним его по условиям
-        # results = Recipe.objects.annotate(
-        #     category=Case(
-        #         When(cooking_time__lt=self.fast, then=Value('fast')),
-        #         When(
-        #             cooking_time__gte=self.fast,
-        #             cooking_time__lte=self.medium,
-        #             then=Value('medium')),
-        #         default=Value('slow'),
-        #         output_field=CharField(),
-        #     ),
-        #     # Сгруппируем записи по полю category и посчитаем кол-во этих полей
-        # ).values('category').annotate(
-        #     recipes_count=Count('id')).order_by('category')
-
-        # result_data = {}
-        # for item in results:
-        #     if item['category'] == 'fast':
-        #         result_data['fast'] = item['recipes_count']
-        #     elif item['category'] == 'medium':
-        #         result_data['medium'] = item['recipes_count']
-        #     elif item['category'] == 'slow':
-        #         result_data['slow'] = item['recipes_count']
-
+        # Первый параметр в возврате есть строковое
+        # представление диапазона времени готовки
         return [
-            ('fast', 'Быстрее {} мин. Рецептов ({})'.format(
-                self.fast, result_data.get('fast', 0))),
-            ('medium', 'Быстрее {} мин. Рецептов ({})'.format(
-                self.medium, result_data.get('medium', 0))),
-            ('slow', 'Дольше {} мин. Рецептов ({})'.format(
-                self.medium, result_data.get('slow', 0))),
+            (
+                f'0 {time_levels[1]}',  # Быстрые
+                'Быстрее {} мин. Рецептов ({})'.format(
+                    time_levels[1], number_recipes[0]
+                )
+            ),
+            (
+                f'{time_levels[1]} {time_levels[2]}',  # Средние
+                'Быстрее {} мин. Рецептов ({})'.format(
+                    time_levels[2], number_recipes[1]
+                )
+            ),
+            (
+                f'{time_levels[2]} {time_levels[3]}',  # Долгие
+                'Дольше {} мин. Рецептов ({})'.format(
+                    time_levels[2], number_recipes[2]
+                )
+            ),
         ]
 
     def queryset(self, request, queryset):
-        value = self.value()
-        if value == 'fast':
-            return queryset.filter(cooking_time__lt=self.fast)
-        elif value == 'medium':
-            return queryset.filter(cooking_time__range=(
-                self.fast, self.medium))
-        elif value == 'slow':
-            return queryset.filter(cooking_time__gt=self.medium)
+        if self.value():
+            return self.filter_by_range(self.value(), queryset)
         return queryset
 
 
@@ -207,14 +185,14 @@ class FollowAdmin(admin.ModelAdmin):
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin, RecipesCountMixin):
-    list_display = ['name', 'slug'] + RecipesCountMixin.list_display
+    list_display = ['name', 'slug', *RecipesCountMixin.list_display]
     search_fields = ('name', 'slug')
 
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin, RecipesCountMixin):
     list_display = [
-        'name', 'measurement_unit'] + RecipesCountMixin.list_display
+        'name', 'measurement_unit', *RecipesCountMixin.list_display]
     search_fields = ('name', 'measurement_unit')
     list_filter = (HasRecipesFilter,)
 
@@ -222,6 +200,7 @@ class IngredientAdmin(admin.ModelAdmin, RecipesCountMixin):
 @admin.register(RecipeIngredient)
 class RecipeIngredientAdmin(admin.ModelAdmin):
     list_display = ('recipe', 'ingredient', 'amount')
+    list_filter = ('recipe',)
 
 
 @admin.register(Recipe)
@@ -236,18 +215,25 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
         'image_miniature',
     )
     search_fields = ('name', 'author__username', 'tags__name')
-    list_filter = ('tags', 'author', CookingTimeFilter)
+    list_filter = (
+        'tags',
+        ('author', admin.RelatedOnlyFieldListFilter),
+        CookingTimeFilter
+    )
 
     @admin.display(description='В Избранном')
-    def favorite_count(self, obj):
+    def favorite_count(self, recipe):
         """Показывает сколько рецептов в избранном."""
-        return obj.favorites.count()
+        return recipe.favorites.count()
 
+    @admin.display(description='Продукты')
     @mark_safe
-    def product_list(self, obj):
+    def product_list(self, recipe):
         """Выводит список продуктов в рецептах."""
-        return '<br>'.join(f'- {item}' for item in obj.ingredients.all())
-    product_list.short_description = 'Продукты'
+        products = '<br>'.join(
+            f'- {ingredient.name}' for ingredient in recipe.ingredients.all()
+        )
+        return f'<div style="white-space: nowrap;">{products}</div>'
 
 
 @admin.register(ShoppingCart, Favorite)

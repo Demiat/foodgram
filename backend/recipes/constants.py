@@ -10,4 +10,3 @@ USERNAME_REGEX = r'^[\w.@+-]+$'
 # SELF_FOLLOWING = 'Нельзя подписаться на самого себя!'
 MIN_COOKING_TIME = 1
 MIN_AMOUNT = 1
-RECIPE_NOT_FOUND = 'Рецепт не найден'
