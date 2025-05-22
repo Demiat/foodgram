@@ -3,7 +3,8 @@ from django_filters import ModelMultipleChoiceFilter, filters, rest_framework
 
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 
-from .constants import IS_FAVORITED_PARAM_NAME, IS_SHOPPING_CART_PARAM_NAME
+IS_FAVORITED_PARAM_NAME = 'is_favorited'
+IS_SHOPPING_CART_PARAM_NAME = 'is_in_shopping_cart'
 
 
 class IngredientFilter(rest_framework.FilterSet):

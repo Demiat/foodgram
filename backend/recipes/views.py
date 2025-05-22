@@ -1,9 +1,8 @@
-from django.shortcuts import redirect
 from django.core.exceptions import ValidationError
+from django.shortcuts import redirect
 
+from .constants import RECIPE_NOT_FOUND
 from .models import Recipe
-
-RECIPE_NOT_FOUND = 'Рецепта c id {} нет в базе!'
 
 
 def get_short_link_recipe(request, recipe_id):

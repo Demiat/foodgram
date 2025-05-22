@@ -5,32 +5,37 @@ from django.db.models import Prefetch, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet as UserViewSetDjoser
-from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
+from rest_framework.permissions import (
+    SAFE_METHODS, AllowAny, 
+    IsAuthenticated, IsAuthenticatedOrReadOnly
+)
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from api.permissions import IsAuthorOrReadOnly
-from recipes.models import (Favorite, Follow, Ingredient, Recipe,
-                            RecipeIngredient, ShoppingCart, Tag, User)
+from recipes.constants import RECIPE_NOT_FOUND
+from recipes.models import (
+    Favorite, Follow, Ingredient, Recipe,
+    RecipeIngredient, ShoppingCart, Tag, User
+)
 
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (
     AvatarSetSerializer, FollowSerializer,
-    IngredientSerializer, LimitedRecipesReadSerializer,
-    RecipesReadSerializer, RecipesWriteSerializer,
+    IngredientSerializer, RecipesReadSerializer,
+    RecipesWriteSerializer, ShortRecipesReadSerializer,
     TagSerializer, UserSerializerDjoser
 )
 
 FOLLOWING_ERROR = 'Подписка уже есть!'
 RECORD_ERROR = 'Запись рецепта с id {} уже есть в базе!'
 SELF_FOLLOWING = 'Нельзя подписаться на самого себя!'
-RECIPE_NOT_FOUND = 'Рецепта c id {} нет в базе!'
 
 
 class UserViewSet(UserViewSetDjoser):
@@ -156,7 +161,7 @@ class RecipesViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def perform_create(self, serializer):
@@ -194,7 +199,7 @@ class RecipesViewSet(ModelViewSet):
         if not created:
             raise ValidationError(RECORD_ERROR.format(recipe_id))
         return Response(
-            LimitedRecipesReadSerializer(recipe).data,
+            ShortRecipesReadSerializer(recipe).data,
             status=status.HTTP_201_CREATED
         )
 

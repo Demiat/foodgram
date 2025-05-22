@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from recipes.models import Tag
+
 from ._base_load import LoadDataBase
 
 

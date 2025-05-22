@@ -3,11 +3,21 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
 from recipes.constants import MIN_AMOUNT, MIN_COOKING_TIME
-from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Tag, User)
+from recipes.models import (
+    Favorite, Follow, Ingredient, Recipe,
+    RecipeIngredient, ShoppingCart, Tag, User
+)
 
-from .constants import (EMPTY_INGREDIENTS, EMPTY_TAGS, INGREDIENTS_VALIDATE,
-                        NOT_IMAGE, REPETITIVE_ERROR, TAGS_VALIDATE)
+REPETITIVE_ERROR = 'Повторения в запросе! Объекты: {}'
+EMPTY_INGREDIENTS = 'Пустой список продуктов недопустим'
+NOT_IMAGE = 'Изображение обязательно!'
+EMPTY_TAGS = 'Пустой список тэгов недопустим'
+INGREDIENTS_VALIDATE = {
+    'error': 'Поле ingredients отсутствует или не прошло валидацию'
+}
+TAGS_VALIDATE = {
+    'error': 'Поле tags отсутствует или не прошло валидацию'
+}
 
 
 class UserSerializerDjoser(UserSerializer):
@@ -18,12 +28,15 @@ class UserSerializerDjoser(UserSerializer):
 
     class Meta(UserSerializer.Meta):
         model = User
-        fields = UserSerializer.Meta.fields + ('avatar', 'is_subscribed')
+        fields = ['avatar', 'is_subscribed', *UserSerializer.Meta.fields]
 
     def get_is_subscribed(self, author):
         return (
             not self.context['request'].user.is_anonymous
-            and self.context['request'].user.followers.filter(
+            # and self.context['request'].user.followers.filter(
+            #     author=author).exists()
+            and Follow.objects.filter(
+                from_user=self.context['request'].user,
                 author=author).exists()
         )
 
@@ -74,11 +87,11 @@ class IngredientInRecipeReadSerializer(serializers.ModelSerializer):
     name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.ReadOnlyField(
         source='ingredient.measurement_unit')
-    amount = serializers.ReadOnlyField()
 
     class Meta:
         model = RecipeIngredient
         fields = ('id', 'name', 'measurement_unit', 'amount')
+        read_only_fields = fields
 
 
 class RecipesReadSerializer(serializers.ModelSerializer):
@@ -90,7 +103,6 @@ class RecipesReadSerializer(serializers.ModelSerializer):
     author = UserSerializerDjoser(read_only=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    cooking_time = serializers.IntegerField(min_value=MIN_COOKING_TIME)
 
     class Meta:
         model = Recipe
@@ -109,10 +121,13 @@ class RecipesReadSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def _favorite_shopping_methods(self, recipe, model):
-        user = self.context['request'].user
-        if user.is_anonymous:
-            return False
-        return model.objects.filter(recipe=recipe, user=user).exists()
+        return (
+            not self.context['request'].user.is_anonymous
+            and model.objects.filter(
+                recipe=recipe,
+                user=self.context['request'].user
+            ).exists()
+        )
 
     def get_is_favorited(self, recipe):
         return self._favorite_shopping_methods(recipe, model=Favorite)
@@ -126,6 +141,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
 
     image = Base64ImageField()
     ingredients = IngredientInRecipeCreateSerializer(many=True)
+    cooking_time = serializers.IntegerField(min_value=MIN_COOKING_TIME)
 
     class Meta:
         model = Recipe
@@ -139,19 +155,15 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         )
 
     def _repetitive_validate(self, objects_list):
-        duplicates = {}
-        repetitive = False
-        for obj in objects_list:
-            if duplicates.get(obj.id):
-                duplicates[obj.id] += 1
-                repetitive = True
-            else:
-                duplicates[obj.id] = 1
-        if repetitive:
+        seen_ids = set()
+        duplicates = [
+            obj for obj in objects_list
+            if obj in seen_ids
+            or seen_ids.add(obj)
+        ]
+        if duplicates:
             raise serializers.ValidationError(
-                REPETITIVE_ERROR.format(
-                    {k: v for k, v in duplicates.items() if v > 1}
-                )
+                REPETITIVE_ERROR.format(duplicates)
             )
 
     def validate_image(self, image):
@@ -205,7 +217,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         return RecipesReadSerializer(recipe, context=self.context).data
 
 
-class LimitedRecipesReadSerializer(serializers.ModelSerializer):
+class ShortRecipesReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
@@ -220,15 +232,15 @@ class FollowSerializer(UserSerializerDjoser):
 
     class Meta(UserSerializerDjoser.Meta):
         model = User
-        fields = UserSerializerDjoser.Meta.fields + (
-            'recipes', 'recipes_count')
+        fields = [
+            'recipes',
+            'recipes_count', *UserSerializerDjoser.Meta.fields
+        ]
 
     def get_recipes(self, authors):
-        try:
-            recipes_limit = int(
-                self.context['request'].GET.get('recipes_limit')
-            )
-        except (ValueError, TypeError):
-            recipes_limit = None
-        return LimitedRecipesReadSerializer(
-            authors.recipes.all()[:recipes_limit], many=True).data
+        return ShortRecipesReadSerializer(
+            authors.recipes.all()[
+                :int(self.context['request'].GET.get('recipes_limit', 10**10))
+            ],
+            many=True
+        ).data
