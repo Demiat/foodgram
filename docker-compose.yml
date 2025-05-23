@@ -1,7 +1,7 @@
 volumes:
+  media_foodgram:
   pg_data_foodgram:
   static_foodgram:
-  media_foodgram:
 
 services:
   db:
@@ -11,7 +11,7 @@ services:
       - pg_data_foodgram:/var/lib/postgresql/data
   backend:
     build: ./backend/
-    image: demiat/foodgram_backend
+    # image: demiat/foodgram_backend
     env_file: .env
     command: bash -c "
       python manage.py collectstatic --noinput &&
@@ -26,22 +26,22 @@ services:
       - db
     volumes:
       - static_foodgram:/backend_static
-      - media_foodgram:/var/www/foodgram/media/
+      - media_foodgram:/var/html/media/
   frontend:
     build: ./frontend/
-    image: demiat/foodgram_frontend
+    # image: demiat/foodgram_frontend
     env_file: .env
     command: cp -r /app/build/. /static/
     volumes:
       - static_foodgram:/static
   gateway:
     build: ./nginx/
-    image: demiat/foodgram_gateway
+    # image: demiat/foodgram_gateway
     env_file: .env
     ports:
       - 8000:80
     volumes:
       - static_foodgram:/staticfiles/
-      - media_foodgram:/var/www/foodgram/media/
+      - media_foodgram:/var/html/media/
     depends_on:
       - backend
