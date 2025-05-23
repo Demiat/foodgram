@@ -33,15 +33,16 @@ docker (https://docs.docker.com/engine/install/ubuntu/)
 
 ## Локально
 
-1) Создать папку и склонировать репозиторий:
+1) Склонировать репозиторий:
 ```
-mkdir <ваша_папка>
-cd <ваша_папка>
 git clone git@github.com:Demiat/foodgram.git
 ```
 
 2) Создать виртуальное окружение: 
-```python -m venv venv```
+```
+cd backend/
+python -m venv venv
+```
 
 3) Активировать виртуальное окружение:
 - для linux ```source venv/bin/activate```
@@ -50,14 +51,14 @@ git clone git@github.com:Demiat/foodgram.git
 4) Установить зависимости: ```pip install -r requirements.txt```
 
 5) Есть возможность заполнить базу данными, используя команды:
-
-```python manage.py load_products <path_to>/ingredients.json```
-где: 
-- <path_to> - путь к файлу с фикстурой
-
-```load_tags <path_to>/tags.json```
-где: 
-- <path_to> - путь к файлу с фикстурой
+- Для загрузки продуктов:
+```
+python manage.py load_products <path_to_json_file
+```
+- Для загрузки тегов:
+```
+python manage.py load_tags <path_to_json_file
+```
 
 6) Создать файл с переменными окружения .env со следующими полями:
 ```

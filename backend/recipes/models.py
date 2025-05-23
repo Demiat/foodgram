@@ -5,6 +5,7 @@ from django.db import models
 from .constants import MIN_AMOUNT, MIN_COOKING_TIME
 
 MAX_LENGTH_NAME = 256
+OUTPUT_LIMITATION_NAME = 50
 MAX_LENGTH_TAG_SLUG = 32
 MAX_LENGTH_TAG_NAME = 32
 MAX_LENGTH_INGRED = 128
@@ -145,7 +146,7 @@ class Ingredient(models.Model):
         )
 
     def __str__(self):
-        return self.name[:50]
+        return self.name[:OUTPUT_LIMITATION_NAME]
 
 
 class Recipe(models.Model):
@@ -188,7 +189,7 @@ class Recipe(models.Model):
         ordering = ('-pub_date',)
 
     def __str__(self):
-        return self.name[:50]
+        return self.name[:OUTPUT_LIMITATION_NAME]
 
 
 class RecipeIngredient(models.Model):
@@ -235,23 +236,18 @@ class AbstractUserRecipeRelation(models.Model):
     def __str__(self):
         return f'{self.user}: {self.recipe}'
 
-    @classmethod
-    def __init_subclass__(cls, *args, unique_name=None, **kwargs):
-        """Устанавливает уникальный индекс при создании потомков."""
-        super().__init_subclass__(*args, **kwargs)
-        cls._meta.constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'recipe'],
-                name=unique_name or f'unique_{cls.__name__.lower()}'
-            )
-        ]
-
     class Meta:
         abstract = True
         default_related_name = '%(model_name)ss'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name='%(class)s_unique'
+            )
+        ]
 
 
-class Favorite(AbstractUserRecipeRelation, unique_name='favorite_unique'):
+class Favorite(AbstractUserRecipeRelation):
     """Избранные рецепты."""
 
     class Meta(AbstractUserRecipeRelation.Meta):
@@ -259,9 +255,7 @@ class Favorite(AbstractUserRecipeRelation, unique_name='favorite_unique'):
         verbose_name_plural = 'Избранное'
 
 
-class ShoppingCart(
-    AbstractUserRecipeRelation, unique_name='shoppingcart_unique'
-):
+class ShoppingCart(AbstractUserRecipeRelation):
     """Список покупок для рецептов."""
 
     class Meta(AbstractUserRecipeRelation.Meta):

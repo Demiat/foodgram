@@ -1,6 +1,5 @@
 import json
-
-from django.db import IntegrityError
+import os
 
 
 class LoadDataBase:
@@ -23,14 +22,13 @@ class LoadDataBase:
         try:
             with open(path_to_file, mode='r', encoding='utf-8') as file:
                 items = self.model_class.objects.bulk_create(
-                    self.model_class(**item) for item in json.load(file)
+                    [self.model_class(**item) for item in json.load(file)],
+                    ignore_conflicts=True
                 )
                 self.stdout.write(
                     self.style.SUCCESS(f'Загружено объектов: {len(items)}')
                 )
-        except IntegrityError as e:
-            self.stderr.write(self.style.WARNING(
-                f'Дубль: {e} - пропускаем!')
-            )
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Ошибка: {e}'))
+            self.stderr.write(self.style.ERROR(
+                f'Ошибка: {e} для файла {os.path.basename(path_to_file)}'
+            ))

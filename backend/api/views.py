@@ -27,14 +27,14 @@ from recipes.models import (
 
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (
-    AvatarSetSerializer, FollowSerializer,
+    AvatarSetSerializer, RecipesOfUserSerializer,
     IngredientSerializer, RecipesReadSerializer,
     RecipesWriteSerializer, ShortRecipesReadSerializer,
-    TagSerializer, UserSerializerDjoser
+    TagSerializer, UserSerializer
 )
 
-FOLLOWING_ERROR = 'Подписка уже есть!'
-RECORD_ERROR = 'Запись рецепта с id {} уже есть в базе!'
+FOLLOWING_ERROR = 'Подписка на {} уже есть!'
+RECORD_ERROR = 'Запись рецепта с id {} в модели {} уже есть в базе!'
 SELF_FOLLOWING = 'Нельзя подписаться на самого себя!'
 
 
@@ -43,7 +43,7 @@ class UserViewSet(UserViewSetDjoser):
 
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
-    serializer_class = UserSerializerDjoser
+    serializer_class = UserSerializer
     http_method_names = ('get', 'post', 'put', 'delete')
 
     @action(
@@ -55,7 +55,7 @@ class UserViewSet(UserViewSetDjoser):
     def get_me_data(self, request):
         """Получение своей учетной записи."""
         return Response(
-            UserSerializerDjoser(
+            UserSerializer(
                 request.user,
                 context={'request': request}).data,
             status=status.HTTP_200_OK
@@ -103,7 +103,7 @@ class UserViewSet(UserViewSetDjoser):
 
         page = self.paginate_queryset(queryset) or []
         return self.get_paginated_response(
-            FollowSerializer(
+            RecipesOfUserSerializer(
                 page, many=True, context={'request': request}).data
         )
 
@@ -114,11 +114,11 @@ class UserViewSet(UserViewSetDjoser):
         permission_classes=(IsAuthenticated,)
     )
     def subscribe(self, request, id):
-        author = get_object_or_404(User, pk=id)
         if request.method != 'POST':
             get_object_or_404(
-                Follow, from_user=request.user, author=author).delete()
+                Follow, from_user=request.user, author=id).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+        author = get_object_or_404(User, pk=id)
         if author == request.user:
             raise ValidationError(SELF_FOLLOWING)
         follow_obj, created = Follow.objects.get_or_create(
@@ -126,9 +126,9 @@ class UserViewSet(UserViewSetDjoser):
             author=author
         )
         if not created:
-            raise ValidationError(FOLLOWING_ERROR)
+            raise ValidationError(FOLLOWING_ERROR.format(author))
         return Response(
-            FollowSerializer(
+            RecipesOfUserSerializer(
                 author,
                 context={'request': request}).data,
             status=status.HTTP_201_CREATED
@@ -183,21 +183,24 @@ class RecipesViewSet(ModelViewSet):
             raise ValidationError(RECIPE_NOT_FOUND.format(pk))
         return Response({
             'short-link': request.build_absolute_uri(
-                reverse('recipe_short_link', args=[pk])
+                reverse('recipes:recipe_short_link', args=[pk])
             )
         })
 
     def _favorite_and_shopping_methods(self, request, recipe_id, model):
         """Добавляет рецепт в избранное или список покупок."""
-        recipe = get_object_or_404(Recipe, pk=recipe_id)
         if request.method != 'POST':
-            get_object_or_404(model, user=request.user, recipe=recipe).delete()
+            get_object_or_404(
+                model, user=request.user, recipe=recipe_id).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+        recipe = get_object_or_404(Recipe, pk=recipe_id)
         model_obj, created = model.objects.get_or_create(
             user=request.user, recipe=recipe
         )
         if not created:
-            raise ValidationError(RECORD_ERROR.format(recipe_id))
+            raise ValidationError(
+                RECORD_ERROR.format(recipe_id, model._meta.verbose_name)
+            )
         return Response(
             ShortRecipesReadSerializer(recipe).data,
             status=status.HTTP_201_CREATED

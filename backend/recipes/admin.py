@@ -1,3 +1,5 @@
+import ast
+
 import numpy
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -9,6 +11,25 @@ from .models import (
 )
 
 admin.site.empty_value_display = '-пусто-'
+
+
+class MethodsForFiltersMixin(admin.SimpleListFilter):
+    """Предоставляет базовые методы для фильтров."""
+
+    def lookups(self, request, model_admin):
+        return self.OPTIONS
+
+    def queryset(self, request, queryset):
+        class_field = getattr(self, 'class_field', '')
+        if self.value() == 'yes':
+            return queryset.filter(
+                **{f'{class_field}__isnull': False}
+            ).distinct()
+        elif self.value() == 'no':
+            return queryset.filter(
+                **{f'{class_field}': None}
+            )
+        return queryset
 
 
 class RecipesCountMixin:
@@ -23,6 +44,7 @@ class RecipesCountMixin:
 
 
 class GetImageMixin:
+    """Выодит миниатюрное изображение."""
 
     @mark_safe
     @admin.display(description='Изображение')
@@ -39,7 +61,7 @@ class GetImageMixin:
         return 'not image'
 
 
-class HasRecipesFilter(admin.SimpleListFilter):
+class HasRecipesFilter(MethodsForFiltersMixin):
     """Фильтрует по признаку наличия рецептов."""
 
     title = 'Наличие рецептов'
@@ -48,19 +70,10 @@ class HasRecipesFilter(admin.SimpleListFilter):
         ('yes', 'С рецептами'),
         ('no', 'Без рецептов'),
     )
-
-    def lookups(self, request, model_admin):
-        return self.OPTIONS
-
-    def queryset(self, request, queryset):
-        if self.value() == 'yes':
-            return queryset.filter(recipes__isnull=False).distinct()
-        elif self.value() == 'no':
-            return queryset.filter(recipes=None)
-        return queryset
+    class_field = 'recipes'
 
 
-class HasSubscriptionFilter(admin.SimpleListFilter):
+class HasSubscriptionFilter(MethodsForFiltersMixin):
     """Выводит авторов, на которых есть подписки."""
 
     title = 'Подписки'
@@ -69,19 +82,10 @@ class HasSubscriptionFilter(admin.SimpleListFilter):
         ('yes', 'Есть подписки?'),
         ('no', 'Нет подписок'),
     )
-
-    def lookups(self, request, model_admin):
-        return self.OPTIONS
-
-    def queryset(self, request, users):
-        if self.value() == 'yes':
-            return users.filter(authors__isnull=False).distinct()
-        elif self.value() == 'no':
-            return users.filter(authors=None)
-        return users
+    class_field = 'authors'
 
 
-class HasFollowersFilter(admin.SimpleListFilter):
+class HasFollowersFilter(MethodsForFiltersMixin):
     """Выводит пользователей, которые подписаны на авторов."""
 
     title = 'Подписавшиеся'
@@ -90,16 +94,7 @@ class HasFollowersFilter(admin.SimpleListFilter):
         ('yes', 'Подписан на кого-то?'),
         ('no', 'Нет подписок'),
     )
-
-    def lookups(self, request, model_admin):
-        return self.OPTIONS
-
-    def queryset(self, request, users):
-        if self.value() == 'yes':
-            return users.filter(followers__isnull=False).distinct()
-        elif self.value() == 'no':
-            return users.filter(followers=None)
-        return users
+    class_field = 'followers'
 
 
 class CookingTimeFilter(admin.SimpleListFilter):
@@ -111,15 +106,17 @@ class CookingTimeFilter(admin.SimpleListFilter):
     title = 'Время приготовления'
     parameter_name = 'cooking_time__range'
 
-    def filter_by_range(self, value_range, queryset=None):
-        base_queryset = queryset or Recipe.objects.all()
-        value_range = tuple(map(int, value_range.split()))
-        return base_queryset.filter(cooking_time__range=value_range)
+    def filter_by_range(self, value_range, queryset=Recipe.objects.all()):
+        return queryset.filter(
+            cooking_time__range=ast.literal_eval(value_range)
+        )
 
     def lookups(self, request, model_admin):
         cooking_times = sorted(
             Recipe.objects.values_list('cooking_time', flat=True)
         )
+        if len(cooking_times) < 3:
+            return []
         number_recipes, time_levels = numpy.histogram(
             cooking_times, bins=3)
         time_levels = list(map(int, time_levels))
@@ -128,19 +125,19 @@ class CookingTimeFilter(admin.SimpleListFilter):
         # представление диапазона времени готовки
         return [
             (
-                f'0 {time_levels[1]}',  # Быстрые
+                f'0, {time_levels[1]}',  # Быстрые
                 'Быстрее {} мин. Рецептов ({})'.format(
                     time_levels[1], number_recipes[0]
                 )
             ),
             (
-                f'{time_levels[1]} {time_levels[2]}',  # Средние
+                f'{time_levels[1]}, {time_levels[2]}',  # Средние
                 'Быстрее {} мин. Рецептов ({})'.format(
                     time_levels[2], number_recipes[1]
                 )
             ),
             (
-                f'{time_levels[2]} {time_levels[3]}',  # Долгие
+                f'{time_levels[2]}, {time_levels[3]}',  # Долгие
                 'Дольше {} мин. Рецептов ({})'.format(
                     time_levels[2], number_recipes[2]
                 )
@@ -158,8 +155,8 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
     search_fields = ('email', 'username')
     list_display = [
         'id', 'username', 'full_name', 'email', 'image_miniature',
-        'subscription_count', 'follower_count'
-    ] + RecipesCountMixin.list_display
+        'subscription_count', 'follower_count', *RecipesCountMixin.list_display
+    ]
     list_filter = (
         'is_active', 'is_staff', 'is_superuser',
         HasSubscriptionFilter, HasFollowersFilter, HasRecipesFilter
@@ -194,7 +191,7 @@ class TagAdmin(admin.ModelAdmin, RecipesCountMixin):
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin, RecipesCountMixin):
     list_display = [
-        'name', 'measurement_unit', *RecipesCountMixin.list_display]
+        'id', 'name', 'measurement_unit', *RecipesCountMixin.list_display]
     search_fields = ('name', 'measurement_unit')
     list_filter = (HasRecipesFilter,)
 
@@ -233,7 +230,9 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
     def product_list(self, recipe):
         """Выводит список продуктов в рецептах."""
         products = '<br>'.join(
-            f'- {ingredient.name}' for ingredient in recipe.ingredients.all()
+            f'- {ingredient.ingredient}, {ingredient.amount} '
+            f'{ingredient.ingredient.measurement_unit}'
+            for ingredient in recipe.recipeingredients.all()
         )
         return f'<div style="white-space: nowrap;">{products}</div>'
 
