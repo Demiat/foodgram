@@ -81,15 +81,15 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='authors',
-        verbose_name='На кого подписались'
+        verbose_name='На кого подписался'
     )
 
     def __str__(self):
         return f'{self.from_user} подписан на {self.author}'
 
     class Meta:
-        verbose_name = 'Подписчик'
-        verbose_name_plural = 'Подписчики'
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
         constraints = (
             models.UniqueConstraint(
                 fields=('from_user', 'author'),
@@ -171,7 +171,7 @@ class Recipe(models.Model):
         verbose_name='Описание',
     )
     cooking_time = models.PositiveIntegerField(
-        verbose_name='Время приготовления (мин.)',
+        verbose_name='Время (мин.)',
         validators=[
             MinValueValidator(MIN_COOKING_TIME),
         ]
@@ -226,10 +226,12 @@ class AbstractUserRecipeRelation(models.Model):
 
     user = models.ForeignKey(
         User,
+        verbose_name='Пользователь',
         on_delete=models.CASCADE
     )
     recipe = models.ForeignKey(
         Recipe,
+        verbose_name='Рецепт',
         on_delete=models.CASCADE
     )
 

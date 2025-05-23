@@ -4,6 +4,7 @@ import numpy
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
+from django.contrib.auth.models import Group
 
 from .models import (
     Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
@@ -12,15 +13,24 @@ from .models import (
 
 admin.site.empty_value_display = '-пусто-'
 
+admin.site.unregister(Group)
 
-class MethodsForFiltersMixin(admin.SimpleListFilter):
+
+class MethodsForFilters(admin.SimpleListFilter):
     """Предоставляет базовые методы для фильтров."""
 
+    options = (
+        ('yes', 'Да'),
+        ('no', 'Нет'),
+    )
+    class_field = ''
+
     def lookups(self, request, model_admin):
-        return self.OPTIONS
+        return self.options
 
     def queryset(self, request, queryset):
-        class_field = getattr(self, 'class_field', '')
+        # class_field = getattr(self, 'class_field', '')
+        class_field = self.class_field
         if self.value() == 'yes':
             return queryset.filter(
                 **{f'{class_field}__isnull': False}
@@ -61,36 +71,36 @@ class GetImageMixin:
         return 'not image'
 
 
-class HasRecipesFilter(MethodsForFiltersMixin):
+class HasRecipesFilter(MethodsForFilters):
     """Фильтрует по признаку наличия рецептов."""
 
     title = 'Наличие рецептов'
     parameter_name = 'has_recipes'
-    OPTIONS = (
+    options = (
         ('yes', 'С рецептами'),
         ('no', 'Без рецептов'),
     )
     class_field = 'recipes'
 
 
-class HasSubscriptionFilter(MethodsForFiltersMixin):
+class HasSubscriptionFilter(MethodsForFilters):
     """Выводит авторов, на которых есть подписки."""
 
     title = 'Подписки'
     parameter_name = 'subscriptions'
-    OPTIONS = (
+    options = (
         ('yes', 'Есть подписки?'),
         ('no', 'Нет подписок'),
     )
     class_field = 'authors'
 
 
-class HasFollowersFilter(MethodsForFiltersMixin):
+class HasFollowersFilter(MethodsForFilters):
     """Выводит пользователей, которые подписаны на авторов."""
 
     title = 'Подписавшиеся'
     parameter_name = 'followers'
-    OPTIONS = (
+    options = (
         ('yes', 'Подписан на кого-то?'),
         ('no', 'Нет подписок'),
     )
@@ -161,6 +171,10 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
         'is_active', 'is_staff', 'is_superuser',
         HasSubscriptionFilter, HasFollowersFilter, HasRecipesFilter
     )
+    fieldsets = (
+        *BaseUserAdmin.fieldsets,
+        ('Аватар', {'fields': ('avatar',)})
+    )
 
     @admin.display(description='ФИО')
     def full_name(self, user):
@@ -177,6 +191,7 @@ class UserAdmin(BaseUserAdmin, RecipesCountMixin, GetImageMixin):
 
 @admin.register(Follow)
 class FollowAdmin(admin.ModelAdmin):
+    list_display = ('from_user', 'author')
     search_fields = ('from_user__username', 'from_user__email',
                      'author__username', 'author__email')
     list_filter = ('from_user', 'author')
@@ -202,6 +217,12 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
     list_filter = ('recipe',)
 
 
+class RecipeIngredientInline(admin.TabularInline):
+    """Выводит продукты в рецепте с мерой."""
+    model = RecipeIngredient
+    extra = 1
+
+
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
     list_display = (
@@ -212,6 +233,7 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
         'favorite_count',
         'product_list',
         'image_miniature',
+        'tags_list',
     )
     search_fields = ('name', 'author__username', 'tags__name')
     list_filter = (
@@ -219,6 +241,14 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
         ('author', admin.RelatedOnlyFieldListFilter),
         CookingTimeFilter
     )
+    inlines = [RecipeIngredientInline]
+    PRODUCT_TEMPLATE = '- {}, {} {}\n'
+    RETURN = '<div style="white-space: nowrap;">{}</div>'
+
+    @admin.display(description='Теги')
+    def tags_list(self, recipe):
+        """Выводит теги рецепта."""
+        return [tag for tag in recipe.tags.all()]
 
     @admin.display(description='В Избранном')
     def favorite_count(self, recipe):
@@ -230,13 +260,27 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
     def product_list(self, recipe):
         """Выводит список продуктов в рецептах."""
         products = '<br>'.join(
-            f'- {ingredient.ingredient}, {ingredient.amount} '
-            f'{ingredient.ingredient.measurement_unit}'
-            for ingredient in recipe.recipeingredients.all()
+            self.PRODUCT_TEMPLATE.format(
+                ingredient.ingredient,
+                ingredient.amount,
+                ingredient.ingredient.measurement_unit
+            ) for ingredient in recipe.recipeingredients.all()
         )
-        return f'<div style="white-space: nowrap;">{products}</div>'
+        return self.RETURN.format(products)
 
 
-@admin.register(ShoppingCart, Favorite)
-class FavoriteShoppingCartAdmin(admin.ModelAdmin):
+class ClassFieldsMixin:
+    """Предоставляет общие настройки."""
+
+    list_display = ('user', 'recipe')
+    search_fields = ('user', 'recipe')
+
+
+@admin.register(ShoppingCart)
+class ShoppingCartAdmin(ClassFieldsMixin, admin.ModelAdmin):
+    pass
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(ClassFieldsMixin, admin.ModelAdmin):
     pass

@@ -53,11 +53,11 @@ python -m venv venv
 5) Есть возможность заполнить базу данными, используя команды:
 - Для загрузки продуктов:
 ```
-python manage.py load_products <path_to_json_file
+python manage.py load_products data/ingredients.json
 ```
 - Для загрузки тегов:
 ```
-python manage.py load_tags <path_to_json_file
+python manage.py load_tags data/tags.json
 ```
 
 6) Создать файл с переменными окружения .env со следующими полями:

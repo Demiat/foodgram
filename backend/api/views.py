@@ -117,7 +117,7 @@ class UserViewSet(UserViewSetDjoser):
     def subscribe(self, request, id):
         if request.method != 'POST':
             get_object_or_404(
-                Follow, from_user=request.user, author=id).delete()
+                Follow, from_user=request.user, author_id=id).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         author = get_object_or_404(User, pk=id)
         if author == request.user:
@@ -193,7 +193,7 @@ class RecipesViewSet(ModelViewSet):
         """Добавляет рецепт в избранное или список покупок."""
         if request.method != 'POST':
             get_object_or_404(
-                model, user=request.user, recipe=recipe_id).delete()
+                model, user=request.user, recipe_id=recipe_id).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         recipe = get_object_or_404(Recipe, pk=recipe_id)
         model_obj, created = model.objects.get_or_create(

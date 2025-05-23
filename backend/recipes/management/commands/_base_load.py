@@ -1,5 +1,4 @@
 import json
-import os
 
 
 class LoadDataBase:
@@ -15,14 +14,14 @@ class LoadDataBase:
         )
 
     def handle(self, *args, **options):
-        """Загружает продукты из JSON-файла."""
+        """Загружает данные из JSON-файла."""
 
         path_to_file = options['path_to_file']
 
         try:
             with open(path_to_file, mode='r', encoding='utf-8') as file:
                 items = self.model_class.objects.bulk_create(
-                    [self.model_class(**item) for item in json.load(file)],
+                    (self.model_class(**item) for item in json.load(file)),
                     ignore_conflicts=True
                 )
                 self.stdout.write(
@@ -30,5 +29,5 @@ class LoadDataBase:
                 )
         except Exception as e:
             self.stderr.write(self.style.ERROR(
-                f'Ошибка: {e} для файла {os.path.basename(path_to_file)}'
+                f'Ошибка: {e} для файла {path_to_file}'
             ))
