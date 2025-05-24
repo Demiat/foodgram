@@ -151,7 +151,7 @@ class CookingTimeFilter(admin.SimpleListFilter):
                     time_levels[2], number_recipes[2]
                 )
             ),
-        ]   
+        ]
         return [
             # Удалим фильтры, в диапазоне которых нет рецептов
             lookups_answer[i] for i in range(3) if number_recipes[i] != 0
