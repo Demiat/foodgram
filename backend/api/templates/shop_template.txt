@@ -1,8 +1,10 @@
-Список покупок от {{ current_date|date:"d.m.Y" }}
+{% load date_filter %}
+{% load russ_words %}
+Список покупок от {{ current_date|russian_months }}
 
 Продукты:
     {% for ingredient in ingredients %}
-        {{ forloop.counter }}. {{ ingredient.ingredient__name|capfirst }} - {{ ingredient.total_amount }} {{ ingredient.ingredient__measurement_unit }}
+        {{ forloop.counter }}. {{ ingredient.ingredient__name|capfirst }} - {{ ingredient.total_amount|inflect:ingredient.ingredient__measurement_unit }}
     {% endfor %}
 
 Для рецептов:

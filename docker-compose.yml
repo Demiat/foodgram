@@ -11,7 +11,6 @@ services:
       - pg_data_foodgram:/var/lib/postgresql/data
   backend:
     build: ./backend/
-    # image: demiat/foodgram_backend
     env_file: .env
     command: bash -c "
       python manage.py collectstatic --noinput &&
@@ -29,14 +28,12 @@ services:
       - media_foodgram:/var/html/media/
   frontend:
     build: ./frontend/
-    # image: demiat/foodgram_frontend
     env_file: .env
     command: cp -r /app/build/. /static/
     volumes:
       - static_foodgram:/static
   gateway:
     build: ./nginx/
-    # image: demiat/foodgram_gateway
     env_file: .env
     ports:
       - 8000:80
