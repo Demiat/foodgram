@@ -9,4 +9,4 @@ def get_short_link_recipe(request, recipe_id):
     """Выводит страницу по короткой ссылке."""
     if not Recipe.objects.filter(pk=recipe_id).exists():
         raise ValidationError(RECIPE_NOT_FOUND.format(recipe_id))
-    return redirect(f'/api/recipes/{recipe_id}/')
+    return redirect(f'//{request.get_host()}/recipes/{recipe_id}/')
