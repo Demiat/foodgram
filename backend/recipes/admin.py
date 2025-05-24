@@ -29,7 +29,6 @@ class MethodsForFilters(admin.SimpleListFilter):
         return self.options
 
     def queryset(self, request, queryset):
-        # class_field = getattr(self, 'class_field', '')
         class_field = self.class_field
         if self.value() == 'yes':
             return queryset.filter(
@@ -133,7 +132,7 @@ class CookingTimeFilter(admin.SimpleListFilter):
 
         # Первый параметр в возврате есть строковое
         # представление диапазона времени готовки
-        return [
+        lookups_answer = [
             (
                 f'0, {time_levels[1]}',  # Быстрые
                 'Быстрее {} мин. Рецептов ({})'.format(
@@ -148,10 +147,14 @@ class CookingTimeFilter(admin.SimpleListFilter):
             ),
             (
                 f'{time_levels[2]}, {time_levels[3]}',  # Долгие
-                'Дольше {} мин. Рецептов ({})'.format(
+                'От {} мин. и дольше. Рецептов ({})'.format(
                     time_levels[2], number_recipes[2]
                 )
             ),
+        ]   
+        return [
+            # Удалим фильтры, в диапазоне которых нет рецептов
+            lookups_answer[i] for i in range(3) if number_recipes[i] != 0
         ]
 
     def queryset(self, request, queryset):

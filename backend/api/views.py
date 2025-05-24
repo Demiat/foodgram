@@ -156,6 +156,11 @@ class IngredientsViewSet(ReadOnlyModelViewSet):
     pagination_class = None
 
 
+class CustomPagination(PageNumberPagination):
+    page_size = 6
+    page_size_query_param = 'limit'
+
+
 class RecipesViewSet(ModelViewSet):
     """Контроллер рецептов."""
 
@@ -164,7 +169,7 @@ class RecipesViewSet(ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
