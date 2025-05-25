@@ -5,7 +5,6 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
 from django.contrib.auth.models import Group
-# from django.forms.widgets import Select
 
 from .models import (
     Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
@@ -232,18 +231,6 @@ class RecipeIngredientInline(admin.TabularInline):
     @admin.display(description='Ед. изм.')
     def measurement_unit(self, instance):
         return instance.ingredient.measurement_unit
-
-    # def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
-    #     if db_field.name == 'ingredient':
-    #         widget = Select(
-    #             attrs={'data-unit':
-    # lambda option: getattr(option.obj, 'measurement_unit', '')})
-    #         kwargs['widget'] = widget
-    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-    # class Media:
-    #     js = ('update_units.js',)
-
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
