@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
 from django.contrib.auth.models import Group
+from django.forms.widgets import Select
 
 from .models import (
     Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
@@ -225,6 +226,23 @@ class RecipeIngredientInline(admin.TabularInline):
     model = RecipeIngredient
     extra = 1
 
+    fields = ('recipe', 'ingredient', 'amount', 'measurement_unit')
+    readonly_fields = ('measurement_unit', )
+
+    @admin.display(description='Ед. изм.')
+    def measurement_unit(self, instance):
+        return instance.ingredient.measurement_unit
+
+    # def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
+    #     if db_field.name == 'ingredient':
+    #         widget = Select(
+    #             attrs={'data-unit': lambda option: getattr(option.obj, 'measurement_unit', '')})
+    #         kwargs['widget'] = widget
+    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    # class Media:
+    #     js = ('update_units.js',)
+
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
@@ -249,9 +267,10 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
     RETURN = '<div style="white-space: nowrap;">{}</div>'
 
     @admin.display(description='Теги')
+    @mark_safe
     def tags_list(self, recipe):
         """Выводит теги рецепта."""
-        return [tag for tag in recipe.tags.all()]
+        return '<br>'.join(tag.name for tag in recipe.tags.all())
 
     @admin.display(description='В Избранном')
     def favorite_count(self, recipe):
@@ -272,18 +291,9 @@ class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
         return self.RETURN.format(products)
 
 
-class ClassFieldsMixin:
+@admin.register(ShoppingCart, Favorite)
+class ClassFieldsMixin(admin.ModelAdmin):
     """Предоставляет общие настройки."""
 
     list_display = ('user', 'recipe')
     search_fields = ('user', 'recipe')
-
-
-@admin.register(ShoppingCart)
-class ShoppingCartAdmin(ClassFieldsMixin, admin.ModelAdmin):
-    pass
-
-
-@admin.register(Favorite)
-class FavoriteAdmin(ClassFieldsMixin, admin.ModelAdmin):
-    pass
