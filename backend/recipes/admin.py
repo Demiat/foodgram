@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
 from django.contrib.auth.models import Group
-from django.forms.widgets import Select
+# from django.forms.widgets import Select
 
 from .models import (
     Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
@@ -236,7 +236,8 @@ class RecipeIngredientInline(admin.TabularInline):
     # def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
     #     if db_field.name == 'ingredient':
     #         widget = Select(
-    #             attrs={'data-unit': lambda option: getattr(option.obj, 'measurement_unit', '')})
+    #             attrs={'data-unit':
+    # lambda option: getattr(option.obj, 'measurement_unit', '')})
     #         kwargs['widget'] = widget
     #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
