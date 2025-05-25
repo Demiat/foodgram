@@ -223,7 +223,7 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 class RecipeIngredientInline(admin.TabularInline):
     """Выводит продукты в рецепте с мерой и ед. измерения."""
     model = RecipeIngredient
-    extra = 1
+    extra = 0
     fields = ('recipe', 'ingredient', 'amount',)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
