@@ -221,16 +221,22 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 
 
 class RecipeIngredientInline(admin.TabularInline):
-    """Выводит продукты в рецепте с мерой."""
+    """Выводит продукты в рецепте с мерой и ед. измерения."""
     model = RecipeIngredient
     extra = 1
+    fields = ('recipe', 'ingredient', 'amount',)
 
-    fields = ('recipe', 'ingredient', 'amount', 'measurement_unit')
-    readonly_fields = ('measurement_unit', )
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Переоформляет поле ingredient для вывода с ед.изм."""
+        field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == 'ingredient':
+            new_choices = [
+                (item.pk, f'{item.name} ({item.measurement_unit})')
+                for item in Ingredient.objects.all()
+            ]
+            field.choices = new_choices
+        return field
 
-    @admin.display(description='Ед. изм.')
-    def measurement_unit(self, instance):
-        return instance.ingredient.measurement_unit
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin, GetImageMixin):
