@@ -3,12 +3,12 @@ import ast
 import numpy
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.utils.safestring import mark_safe
 from django.contrib.auth.models import Group
+from django.utils.safestring import mark_safe
 
 from .models import (
-    Favorite, Follow, Ingredient, Recipe, RecipeIngredient,
-    ShoppingCart, Tag, User
+    Favorite, Follow, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag,
+    User
 )
 
 admin.site.empty_value_display = '-пусто-'
@@ -53,7 +53,7 @@ class RecipesCountMixin:
 
 
 class GetImageMixin:
-    """Выодит миниатюрное изображение."""
+    """Выводит миниатюрное изображение."""
 
     @mark_safe
     @admin.display(description='Изображение')
@@ -222,6 +222,7 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 
 class RecipeIngredientInline(admin.TabularInline):
     """Выводит продукты в рецепте с мерой и ед. измерения."""
+
     model = RecipeIngredient
     extra = 0
     fields = ('recipe', 'ingredient', 'amount',)

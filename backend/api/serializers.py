@@ -6,8 +6,8 @@ from rest_framework import serializers
 
 from recipes.constants import MIN_AMOUNT, MIN_COOKING_TIME
 from recipes.models import (
-    Favorite, Follow, Ingredient, Recipe,
-    RecipeIngredient, ShoppingCart, Tag, User
+    Favorite, Follow, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag,
+    User
 )
 
 REPETITIVE_ERROR = 'Повторения в запросе! Объекты: {}'

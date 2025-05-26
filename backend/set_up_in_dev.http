@@ -2,8 +2,9 @@
 # TODO: исключить из финальной сборки в .gitignore
 
 # Создадим пользователя
-POST http://localhost:8000/api/users/
+# POST http://localhost:8000/api/users/
 # POST https://100yp.ddns.net/api/users/
+POST https://foogram.zapto.org/api/users/
 Content-Type: application/json
 Accept: application/json
 
@@ -17,8 +18,9 @@ Accept: application/json
 ###
 
 # Получим токен
-POST http://localhost:8000/api/auth/token/login/
+# POST http://localhost:8000/api/auth/token/login/
 # POST https://100yp.ddns.net/api/auth/token/login/
+POST https://foogram.zapto.org/api/auth/token/login/
 Content-Type: application/json
 Accept: application/json
 
@@ -30,10 +32,11 @@ Accept: application/json
 
 # 79eb465c890516bc1d68cbbcd6e3705a3784eaaa
 # Установим аватар
-PUT http://localhost:8000/api/users/me/avatar/
+# PUT http://localhost:8000/api/users/me/avatar/
 # PUT https://100yp.ddns.net/api/users/me/avatar/
+PUT https://foogram.zapto.org/api/users/me/avatar/
 Content-Type: application/json
-Authorization: Token 1c33d55e8dde18a00d27a83dc40222d1fb92afb3
+Authorization: Token 9c33e97189cc4f2ab6c326a9a11e243be4b12f8c
 Accept: application/json
 
 {
@@ -43,9 +46,10 @@ Accept: application/json
 
 # Создадим рецепт 1
 # POST http://localhost:8000/api/recipes/
-POST https://100yp.ddns.net/api/recipes/
+# POST https://100yp.ddns.net/api/recipes/
+POST https://foogram.zapto.org/api/recipes/
 Content-Type: application/json
-Authorization: Token 6787501251977d9aa4a38ca32daf4ec77e4b0167
+Authorization: Token 9c33e97189cc4f2ab6c326a9a11e243be4b12f8c
 Accept: application/json
 
 {

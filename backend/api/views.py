@@ -7,14 +7,13 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.pagination import PageNumberPagination
 from djoser.views import UserViewSet as UserViewSetDjoser
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (
-    SAFE_METHODS, AllowAny,
-    IsAuthenticated, IsAuthenticatedOrReadOnly
+    SAFE_METHODS, AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
@@ -22,15 +21,14 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from api.permissions import IsAuthorOrReadOnly
 from recipes.constants import RECIPE_NOT_FOUND
 from recipes.models import (
-    Favorite, Follow, Ingredient, Recipe,
-    RecipeIngredient, ShoppingCart, Tag, User
+    Favorite, Follow, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag,
+    User
 )
 
 from .filters import IngredientFilter, RecipeFilter
 from .serializers import (
-    AvatarSetSerializer, RecipesOfUserSerializer,
-    IngredientSerializer, RecipesReadSerializer,
-    RecipesWriteSerializer, ShortRecipesReadSerializer,
+    AvatarSetSerializer, IngredientSerializer, RecipesOfUserSerializer,
+    RecipesReadSerializer, RecipesWriteSerializer, ShortRecipesReadSerializer,
     TagSerializer, UserSerializer
 )
 
@@ -169,7 +167,7 @@ class RecipesViewSet(ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
-    pagination_class = CustomPagination
+    # pagination_class = CustomPagination
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
