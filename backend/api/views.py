@@ -11,7 +11,6 @@ from djoser.views import UserViewSet as UserViewSetDjoser
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (
     SAFE_METHODS, AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
@@ -154,11 +153,6 @@ class IngredientsViewSet(ReadOnlyModelViewSet):
     pagination_class = None
 
 
-class CustomPagination(PageNumberPagination):
-    page_size = 6
-    page_size_query_param = 'limit'
-
-
 class RecipesViewSet(ModelViewSet):
     """Контроллер рецептов."""
 
@@ -167,7 +161,6 @@ class RecipesViewSet(ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
-    # pagination_class = CustomPagination
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
