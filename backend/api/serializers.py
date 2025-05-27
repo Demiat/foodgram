@@ -1,6 +1,7 @@
 from collections import Counter
 
 from djoser.serializers import UserSerializer as UserSerializerDjoser
+from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -196,6 +197,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
             ) for ingredient_data in ingredients
         )
 
+    @transaction.atomic
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
         recipe = super().create(validated_data)
