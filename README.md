@@ -103,14 +103,14 @@ DEBUG=<False или True>
 
 Управление проектом доступно по REST API.
 Документация к API доступна по адресам:
-- [Документация API swagger](https://100yp.ddns.net/swagger/)
-- [Документация API redoc](https://100yp.ddns.net/redoc/)
+- [Документация API swagger](https://dvp.zapto.org/swagger/)
+- [Документация API redoc](https://dvp.zapto.org/redoc/)
 
 Доступ к админ-панели осуществляется через следующий URL:
-Администраторам: [Администраторская панель](https://100yp.ddns.net/admin/)
+Администраторам: [Администраторская панель](https://dvp.zapto.org/admin/)
 
 Сервер доступен по адресу:
-Основной сервер: [Сервер приложения](https://100yp.ddns.net/)
+Основной сервер: [Сервер приложения](https://dvp.zapto.org/)
 
 
 Автор: [Тарасов Дмитрий](https://github.com/Demiat)
