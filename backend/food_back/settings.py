@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Dict, Union
 
 from dotenv import load_dotenv
 
