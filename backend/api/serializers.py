@@ -1,7 +1,7 @@
 from collections import Counter
 
-from djoser.serializers import UserSerializer as UserSerializerDjoser
 from django.db import transaction
+from djoser.serializers import UserSerializer as UserSerializerDjoser
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 

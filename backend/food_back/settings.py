@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Dict, Union
 
 from dotenv import load_dotenv
 
@@ -59,16 +60,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'food_back.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('ENGINE_POSTGRES', 'django.db.backends.sqlite3'),
-        'NAME': os.getenv('POSTGRES_DB', BASE_DIR / 'db.sqlite3'),
-        'USER': os.getenv('POSTGRES_USER', 'django'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'PORT': os.getenv('DB_PORT', 5432)
-    }
+DATABASES: Dict[str, Union[str, int, object]] = {}
+POSTGRES = {
+    'ENGINE': 'django.db.backends.postgresql',
+    'NAME': os.getenv('POSTGRES_DB', 'django'),
+    'USER': os.getenv('POSTGRES_USER', 'django'),
+    'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+    'HOST': os.getenv('DB_HOST', ''),
+    'PORT': os.getenv('DB_PORT', 5432)
 }
+SQLite = {
+    'ENGINE': 'django.db.backends.sqlite3',
+    'NAME': BASE_DIR / 'db.sqlite3',
+}
+if os.getenv('USE_POSTGRES', 'False') == 'True':
+    DATABASES['default'] = POSTGRES
+else:
+    DATABASES['default'] = SQLite
 
 
 AUTH_PASSWORD_VALIDATORS = [
